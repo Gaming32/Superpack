@@ -6,5 +6,6 @@
         "jdk.*",
         "org.graalvm.*",
         "io.micrometer.shaded.*"
-    ]
+    ],
+    "discord.enabled": true
 }
