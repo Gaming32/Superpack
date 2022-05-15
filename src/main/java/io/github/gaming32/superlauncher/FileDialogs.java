@@ -25,7 +25,7 @@ public final class FileDialogs {
         return FILE_CHOOSER.getSelectedFile();
     }
 
-    public static File destDir(Component parent) {
+    public static File outputDir(Component parent) {
         FILE_CHOOSER.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
         FILE_CHOOSER.setMultiSelectionEnabled(false);
         FILE_CHOOSER.setDialogTitle("Select destination directory...");

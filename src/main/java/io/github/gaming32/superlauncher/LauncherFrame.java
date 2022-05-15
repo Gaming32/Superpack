@@ -45,7 +45,7 @@ public final class LauncherFrame extends JFrame {
     }
 
     private void createComponents() {
-        JButton installPackButton = new JButton("Install Pack");
+        JButton installPackButton = new JButton("Install Pack...");
         installPackButton.addActionListener(ev -> {
             File packFile = FileDialogs.mrpack(this);
             if (packFile == null) return;
