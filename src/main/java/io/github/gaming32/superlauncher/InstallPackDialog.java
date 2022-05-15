@@ -1,6 +1,7 @@
 package io.github.gaming32.superlauncher;
 
 import java.awt.Component;
+import java.awt.Dimension;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
@@ -83,6 +84,12 @@ public final class InstallPackDialog extends JDialog {
         } catch (IOException e) {
             GeneralUtil.showErrorMessage(this, e);
         }
+    }
+
+    @Override
+    public void pack() {
+        super.pack();
+        setMinimumSize(new Dimension(getWidth(), getHeight() - installOutput.getHeight() + 20));
     }
 
     private void createComponents() {
@@ -213,7 +220,7 @@ public final class InstallPackDialog extends JDialog {
             )
             .addComponent(
                 outputScrollPane,
-                GroupLayout.PREFERRED_SIZE, 150, Integer.MAX_VALUE
+                20, 150, Integer.MAX_VALUE
             )
         );
     }
