@@ -9,6 +9,7 @@ public final class GeneralUtil {
     }
 
     public static void showErrorMessage(Component owner, Throwable t) {
+        t.printStackTrace();
         JOptionPane.showMessageDialog(owner, t.getMessage(), t.getClass().getName(), JOptionPane.ERROR_MESSAGE);
     }
 }
