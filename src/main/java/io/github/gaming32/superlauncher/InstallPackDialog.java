@@ -379,6 +379,12 @@ public final class InstallPackDialog extends JDialog {
                     continue;
                 }
             }
+            File cacheFile = getCacheFile(file);
+            if (cacheFile.isFile()) {
+                println("   File found in cache at " + cacheFile);
+                Files.copy(cacheFile.toPath(), destPath.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                continue;
+            }
             boolean success = false;
             for (URL downloadUrl : file.getDownloads()) {
                 println("   Downloading " + downloadUrl);
@@ -411,7 +417,10 @@ public final class InstallPackDialog extends JDialog {
                 success = true;
                 break;
             }
-            if (!success) {
+            if (success) {
+                cacheFile.getParentFile().mkdirs();
+                Files.copy(destPath.toPath(), cacheFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            } else {
                 println("   Failed to download file.");
                 Files.delete(destPath.toPath());
             }
@@ -447,6 +456,16 @@ public final class InstallPackDialog extends JDialog {
             i++;
         }
         println("Extracted " + overrides.size() + " " + sideName + " overrides");
+    }
+
+    private static File getCacheFile(PackFile file) {
+        String hash = toHexString(file.getHashes().get("sha1"));
+        String path =
+            hash.substring(0, 2) + '/' +
+            hash.substring(2, 4) + '/' +
+            hash.substring(4) + '/' +
+            file.getPath();
+        return new File(LauncherMain.downloadCacheDir, path);
     }
 
     private static final char[] HEX_CHARS = "0123456789abcdef".toCharArray();
