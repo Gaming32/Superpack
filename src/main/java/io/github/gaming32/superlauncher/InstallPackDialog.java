@@ -375,7 +375,7 @@ public final class InstallPackDialog extends JDialog {
                     digest.getDigests()[0].digest(),
                     file.getHashes().get("sha1")
                 )) {
-                    println("Skipping already complete file " + file.getPath());
+                    println("   Skipping already complete file " + file.getPath());
                     continue;
                 }
             }
