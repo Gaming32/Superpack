@@ -2,12 +2,23 @@ package io.github.gaming32.superlauncher;
 
 import java.awt.Component;
 import java.awt.Dimension;
+import java.awt.Font;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
+import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
+import java.security.DigestInputStream;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 import javax.swing.BoxLayout;
@@ -35,7 +46,10 @@ import io.github.gaming32.mrpacklib.Mrpack;
 import io.github.gaming32.mrpacklib.Mrpack.EnvCompatibility;
 import io.github.gaming32.mrpacklib.Mrpack.EnvSide;
 import io.github.gaming32.mrpacklib.packindex.PackFile;
+import io.github.gaming32.superlauncher.util.DisplayErrorMessageMarker;
 import io.github.gaming32.superlauncher.util.GeneralUtil;
+import io.github.gaming32.superlauncher.util.MultiMessageDigest;
+import io.github.gaming32.superlauncher.util.NonWrappingTextPane;
 
 public final class InstallPackDialog extends JDialog {
     private final Consumer<Boolean> themeListener = isDark -> SwingUtilities.invokeLater(() -> {
@@ -53,6 +67,7 @@ public final class InstallPackDialog extends JDialog {
 
     private JTextField selectedPack;
     private JTextField outputDir;
+    private JButton browseOutputDir;
     private JComboBox<EnvSide> side;
     private JPanel optionalCheckboxPanel;
     private Map<String, JCheckBox> optionalCheckboxes;
@@ -99,7 +114,7 @@ public final class InstallPackDialog extends JDialog {
 
         JLabel outputDirLabel = new JLabel("Output folder:");
         outputDir = new JTextField(10);
-        JButton browseOutputDir = new JButton("Browse...");
+        browseOutputDir = new JButton("Browse...");
         browseOutputDir.addActionListener(ev -> {
             File outputDirFile = FileDialogs.outputDir(this);
             if (outputDirFile == null) return;
@@ -120,20 +135,26 @@ public final class InstallPackDialog extends JDialog {
 
         installButton = new JButton("Install!");
         installButton.addActionListener(ev -> {
-            installButton.setEnabled(false);
+            setConfigEnabled(false);
             installOutput.setText("");
             new Thread(this::doInstall, "InstallThread").start();
         });
 
-        installOutput = new JTextPane();
+        installOutput = new NonWrappingTextPane();
         installOutput.setEditable(false);
         installOutput.setAutoscrolls(true);
+        installOutput.setFont(new Font(
+            "Lucida Console",
+            installOutput.getFont().getStyle(),
+            installOutput.getFont().getSize()
+        ));
         JScrollPane outputScrollPane = new JScrollPane(
             installOutput,
             ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
-            ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
+            ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED
         );
-        outputScrollPane.revalidate();
+        outputScrollPane.getMinimumSize().height = 20;
+        outputScrollPane.setPreferredSize(new Dimension(200, 150));
 
         GroupLayout layout = new GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
@@ -218,15 +239,13 @@ public final class InstallPackDialog extends JDialog {
                 installButton,
                 GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE
             )
-            .addComponent(
-                outputScrollPane,
-                20, 150, Integer.MAX_VALUE
-            )
+            .addComponent(outputScrollPane)
         );
     }
 
     private void populateOptionalCheckboxes() {
         optionalCheckboxPanel.removeAll();
+        Map<String, JCheckBox> oldOptionalCheckboxes = new HashMap<>(optionalCheckboxes);
         optionalCheckboxes.clear();
         try {
             for (PackFile optionalFile : pack.getAllFiles((EnvSide)side.getSelectedItem(), EnvCompatibility.OPTIONAL)) {
@@ -235,19 +254,38 @@ public final class InstallPackDialog extends JDialog {
                 checkBox.setAlignmentX(Component.RIGHT_ALIGNMENT);
                 optionalCheckboxPanel.add(checkBox);
                 optionalCheckboxes.put(optionalFile.getPath(), checkBox);
+                JCheckBox oldCheckBox = oldOptionalCheckboxes.get(optionalFile.getPath());
+                if (oldCheckBox != null) {
+                    checkBox.setSelected(oldCheckBox.isSelected());
+                } else {
+                    checkBox.setSelected(true);
+                }
             }
         } catch (IOException e) {
             GeneralUtil.showErrorMessage(this, e);
         }
     }
 
-    private void println(String s) {
-        System.out.println(s);
+    private void setConfigEnabled(boolean enabled) {
+        outputDir.setEditable(enabled);
+        browseOutputDir.setEnabled(enabled);
+        side.setEnabled(enabled);
+        for (JCheckBox optionalCheckBox : optionalCheckboxes.values()) {
+            optionalCheckBox.setEnabled(enabled);
+        }
+        installButton.setEnabled(enabled);
+    }
+
+    private void print(String s) throws InterruptedException {
+        System.out.print(s);
+        if (!isVisible()) {
+            throw new InterruptedException();
+        }
         try {
             SwingUtilities.invokeAndWait(() -> {
                 installOutput.setEditable(true);
                 installOutput.setCaretPosition(installOutput.getDocument().getLength());
-                installOutput.replaceSelection(s + '\n');
+                installOutput.replaceSelection(s);
                 installOutput.setEditable(false);
             });
         } catch (InvocationTargetException | InterruptedException e) {
@@ -255,30 +293,150 @@ public final class InstallPackDialog extends JDialog {
         }
     }
 
+    private void println(String s) throws InterruptedException {
+        print(s + System.lineSeparator());
+    }
+
     private void doInstall() {
+        boolean showSuccessMessage;
         try {
-            doInstall0();
+            showSuccessMessage = doInstall0();
         } catch (InterruptedException e) {
+            showSuccessMessage = false;
+        } catch (DisplayErrorMessageMarker e) {
+            showSuccessMessage = false;
+            JOptionPane.showMessageDialog(this, e.getMessage(), getTitle(), JOptionPane.ERROR_MESSAGE);
+        } catch (Exception e) {
+            showSuccessMessage = false;
             GeneralUtil.showErrorMessage(this, e);
         }
         if (isVisible()) {
+            final boolean showSuccessMessage0 = showSuccessMessage;
             SwingUtilities.invokeLater(() -> {
-                installButton.setEnabled(true);
-                JOptionPane.showMessageDialog(
-                    this,
-                    "Finished installing pack " + packFile.getName() + "!",
-                    getTitle(),
-                    JOptionPane.INFORMATION_MESSAGE
-                );
+                setConfigEnabled(true);
+                if (showSuccessMessage0) {
+                    JOptionPane.showMessageDialog(
+                        this,
+                        "Finished installing pack " + packFile.getName() + "!",
+                        getTitle(),
+                        JOptionPane.INFORMATION_MESSAGE
+                    );
+                }
             });
         }
     }
 
-    private void doInstall0() throws InterruptedException {
-        for (int i = 0; i < 10; i++) {
-            if (!isVisible()) return;
-            println(Integer.toString(i));
-            Thread.sleep(1000);
+    private boolean doInstall0() throws InterruptedException, IOException, NoSuchAlgorithmException {
+        if (outputDir.getText().isEmpty()) {
+            println("Please specify a destination directory");
+            return false;
         }
+        final File outputDirFile = new File(outputDir.getText());
+
+        final EnvSide env = (EnvSide)side.getSelectedItem();
+        println("Creating destination directory...");
+        File root = new File(outputDir.getText());
+        root.mkdirs();
+
+        println("\nDownloading files...");
+        MultiMessageDigest digest = new MultiMessageDigest(
+            MessageDigest.getInstance("SHA-1"),
+            MessageDigest.getInstance("SHA-512")
+        );
+        long totalDownloadSize = 0;
+        int downloadedCount = 0;
+        for (PackFile file : pack.getAllFiles(env)) {
+            if (file.getEnv().get(env) == EnvCompatibility.OPTIONAL) {
+                JCheckBox optionalCheckBox = optionalCheckboxes.get(file.getPath());
+                if (!optionalCheckBox.isSelected()) {
+                    println("Skipped optional file " + file.getPath());
+                    continue;
+                }
+            }
+            File destPath = new File(outputDirFile, file.getPath());
+            if (!destPath.toPath().startsWith(outputDirFile.toPath())) {
+                throw new DisplayErrorMessageMarker(
+                    "Unsafe file detected: " + file.getPath() + "\n" +
+                    "The developer of this modpack may be attempting to install malware on your computer." +
+                    "For safety, further installation of this modpack has been aborted."
+                );
+            }
+            destPath.getParentFile().mkdirs();
+            println("Installing " + file.getPath());
+            boolean success = false;
+            for (URL downloadUrl : file.getDownloads()) {
+                println("   Downloading " + downloadUrl);
+                digest.reset();
+                long downloadSize;
+                try (InputStream is = new DigestInputStream(downloadUrl.openStream(), digest)) {
+                    downloadSize = Files.copy(is, destPath.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                }
+                println("      Downloaded " + downloadSize + " bytes");
+                if (downloadSize != file.getFileSize()) {
+                    println("         ERROR: File size doesn't match! Expected " + file.getFileSize() + " bytes");
+                    continue;
+                }
+                byte[] hash1 = digest.getDigests()[0].digest();
+                byte[] hash2 = file.getHashes().get("sha1");
+                println("      SHA-1: " + toHexString(hash1));
+                if (!Arrays.equals(hash1, hash2)) {
+                    println("         ERROR: SHA-1 doesn't match! Expected " + toHexString(hash2));
+                    continue;
+                }
+                hash1 = digest.getDigests()[1].digest();
+                hash2 = file.getHashes().get("sha512");
+                println("      SHA-512: " + toHexString(hash1));
+                if (!Arrays.equals(hash1, hash2)) {
+                    println("         ERROR: SHA-512 doesn't match! Expected " + toHexString(hash2));
+                    continue;
+                }
+                totalDownloadSize += downloadSize;
+                downloadedCount++;
+                success = true;
+                break;
+            }
+            if (!success) {
+                println("   Failed to download file.");
+                Files.delete(destPath.toPath());
+            }
+        }
+        println("Downloaded a total of " + totalDownloadSize + " bytes across " + downloadedCount + " files");
+
+        extractOverrides(outputDirFile, null);
+        extractOverrides(outputDirFile, env);
+
+        println("\nInstall success!");
+        return true;
+    }
+
+    private void extractOverrides(File outputDirFile, EnvSide side) throws InterruptedException, IOException {
+        String sideName = side == null ? "global" : side.toString().toLowerCase();
+        println("\nExtracting " + sideName + " overrides...");
+        List<ZipEntry> overrides = pack.getOverrides(side);
+        for (ZipEntry override : overrides) {
+            String baseName = override.getName();
+            baseName = baseName.substring(baseName.indexOf('/') + 1);
+            File destFile = new File(outputDirFile, baseName);
+            if (override.isDirectory()) {
+                destFile.mkdirs();
+                continue;
+            }
+            println("Extracting " + override.getName());
+            destFile.getParentFile().mkdirs();
+            try (InputStream is = packZip.getInputStream(override)) {
+                Files.copy(is, destFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            }
+        }
+        println("Extracted " + overrides.size() + " " + sideName + " overrides");
+    }
+
+    private static final char[] HEX_CHARS = "0123456789abcdef".toCharArray();
+    private static String toHexString(byte[] arr) {
+        StringBuilder result = new StringBuilder(arr.length << 1);
+        for (byte v : arr) {
+            result.append(HEX_CHARS[(v & 0xff) >> 4]);
+            result.append(HEX_CHARS[v & 0xf]);
+        }
+        return result.toString();
     }
 }
