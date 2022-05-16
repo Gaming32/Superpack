@@ -335,8 +335,7 @@ public final class InstallPackDialog extends JDialog {
 
         final EnvSide env = (EnvSide)side.getSelectedItem();
         println("Creating destination directory...");
-        File root = new File(outputDir.getText());
-        root.mkdirs();
+        outputDirFile.mkdirs();
 
         println("\nDownloading files...");
         MultiMessageDigest digest = new MultiMessageDigest(
@@ -345,7 +344,8 @@ public final class InstallPackDialog extends JDialog {
         );
         long totalDownloadSize = 0;
         int downloadedCount = 0;
-        for (PackFile file : pack.getAllFiles(env)) {
+        List<PackFile> filesToDownload = pack.getAllFiles(env);
+        for (PackFile file : filesToDownload) {
             if (file.getEnv().get(env) == EnvCompatibility.OPTIONAL) {
                 JCheckBox optionalCheckBox = optionalCheckboxes.get(file.getPath());
                 if (!optionalCheckBox.isSelected()) {
@@ -362,7 +362,7 @@ public final class InstallPackDialog extends JDialog {
                 );
             }
             destPath.getParentFile().mkdirs();
-            println("Installing " + file.getPath());
+            println("Installing " + file.getPath() + " (" + (downloadedCount + 1) + "/" + filesToDownload.size() + ")");
             boolean success = false;
             for (URL downloadUrl : file.getDownloads()) {
                 println("   Downloading " + downloadUrl);
@@ -413,19 +413,22 @@ public final class InstallPackDialog extends JDialog {
         String sideName = side == null ? "global" : side.toString().toLowerCase();
         println("\nExtracting " + sideName + " overrides...");
         List<ZipEntry> overrides = pack.getOverrides(side);
+        int i = 0;
         for (ZipEntry override : overrides) {
             String baseName = override.getName();
             baseName = baseName.substring(baseName.indexOf('/') + 1);
             File destFile = new File(outputDirFile, baseName);
             if (override.isDirectory()) {
                 destFile.mkdirs();
+                i++;
                 continue;
             }
-            println("Extracting " + override.getName());
+            println("Extracting " + override.getName() + " (" + (i + 1) + "/" + overrides.size() + ")");
             destFile.getParentFile().mkdirs();
             try (InputStream is = packZip.getInputStream(override)) {
                 Files.copy(is, destFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
             }
+            i++;
         }
         println("Extracted " + overrides.size() + " " + sideName + " overrides");
     }
