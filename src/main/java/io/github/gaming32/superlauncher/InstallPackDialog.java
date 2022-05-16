@@ -4,6 +4,7 @@ import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
@@ -343,6 +344,7 @@ public final class InstallPackDialog extends JDialog {
             MessageDigest.getInstance("SHA-512")
         );
         long totalDownloadSize = 0;
+        int installedCount = 0;
         int downloadedCount = 0;
         List<PackFile> filesToDownload = pack.getAllFiles(env);
         for (PackFile file : filesToDownload) {
@@ -362,7 +364,21 @@ public final class InstallPackDialog extends JDialog {
                 );
             }
             destPath.getParentFile().mkdirs();
-            println("Installing " + file.getPath() + " (" + (downloadedCount + 1) + "/" + filesToDownload.size() + ")");
+            println("Installing " + file.getPath() + " (" + ++installedCount + "/" + filesToDownload.size() + ")");
+            if (Files.exists(destPath.toPath()) && Files.size(destPath.toPath()) == file.getFileSize()) {
+                digest.getDigests()[0].reset();
+                try (InputStream is = new DigestInputStream(new FileInputStream(destPath), digest.getDigests()[0])) {
+                    byte[] buf = new byte[8192];
+                    while (is.read(buf) != -1);
+                }
+                if (Arrays.equals(
+                    digest.getDigests()[0].digest(),
+                    file.getHashes().get("sha1")
+                )) {
+                    println("Skipping already complete file " + file.getPath());
+                    continue;
+                }
+            }
             boolean success = false;
             for (URL downloadUrl : file.getDownloads()) {
                 println("   Downloading " + downloadUrl);
