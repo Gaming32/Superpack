@@ -23,7 +23,7 @@ jobs:
           mvn clean install -f pom.xml
       - name: Upload artifact
         uses: actions/upload-artifact@v2
-        if: ${{ matrix.java == 8 && matrix.os == 'ubuntu-latest' }}
+        if: ${{ matrix.java == 11 && matrix.os == 'ubuntu-latest' }}
         with:
           name: superpack-jar-artifact
           path: target/superpack-*.jar
