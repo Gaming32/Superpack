@@ -75,7 +75,7 @@ public final class InstallPackDialog extends JDialog {
     private JButton installButton;
     private JTextPane installOutput;
 
-    public InstallPackDialog(LauncherFrame parent, File packFile, OsThemeDetector themeDetector) throws IOException {
+    public InstallPackDialog(SuperpackMainFrame parent, File packFile, OsThemeDetector themeDetector) throws IOException {
         super(parent, "Install Pack", ModalityType.APPLICATION_MODAL);
         this.themeDetector = themeDetector;
         this.packFile = packFile;
@@ -95,10 +95,12 @@ public final class InstallPackDialog extends JDialog {
     public void dispose() {
         super.dispose();
         themeDetector.removeListener(themeListener);
-        try {
-            pack.close();
-        } catch (IOException e) {
-            GeneralUtil.showErrorMessage(this, e);
+        if (pack != null) { // It's null if initialization failed
+            try {
+                pack.close();
+            } catch (IOException e) {
+                GeneralUtil.showErrorMessage(this, e);
+            }
         }
     }
 

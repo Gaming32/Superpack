@@ -5,11 +5,17 @@ import java.util.Locale;
 
 import javax.swing.SwingUtilities;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.formdev.flatlaf.FlatDarkLaf;
 import com.formdev.flatlaf.FlatLightLaf;
 import com.jthemedetecor.OsThemeDetector;
 
 public class SuperpackMain {
+    public static final String APP_NAME = "Superpack";
+    public static final Logger LOGGER = LoggerFactory.getLogger(SuperpackMain.class);
+
     static File dataDir;
     static File cacheDir;
     static File downloadCacheDir;
@@ -25,7 +31,7 @@ public class SuperpackMain {
         } else {
             FlatLightLaf.setup();
         }
-        SwingUtilities.invokeLater(() -> new LauncherFrame(themeDetector));
+        SwingUtilities.invokeLater(() -> new SuperpackMainFrame(themeDetector));
     }
 
     private static File getDataDir() {
