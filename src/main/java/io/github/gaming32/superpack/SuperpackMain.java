@@ -37,12 +37,12 @@ public class SuperpackMain {
     private static File getDataDir() {
         String os = System.getProperty("os.name").toLowerCase(Locale.ROOT);
         if (os.contains("win")) {
-            return new File(System.getenv("APPDATA"), ".superlauncher");
+            return new File(System.getenv("APPDATA"), ".superpack");
         }
         String home = System.getProperty("user.dir");
         if (os.contains("mac")) {
-            return new File(home, "Library/Application Support/superlauncher");
+            return new File(home, "Library/Application Support/superpack");
         }
-        return new File(home, ".superlauncher");
+        return new File(home, ".superpack");
     }
 }
