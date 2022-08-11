@@ -1,4 +1,4 @@
-package io.github.gaming32.superlauncher;
+package io.github.gaming32.superpack;
 
 import java.io.File;
 import java.util.Locale;
@@ -9,7 +9,7 @@ import com.formdev.flatlaf.FlatDarkLaf;
 import com.formdev.flatlaf.FlatLightLaf;
 import com.jthemedetecor.OsThemeDetector;
 
-public class LauncherMain {
+public class SuperpackMain {
     static File dataDir;
     static File cacheDir;
     static File downloadCacheDir;

@@ -1,4 +1,4 @@
-package io.github.gaming32.superlauncher;
+package io.github.gaming32.superpack;
 
 import java.awt.Component;
 import java.awt.Dimension;
@@ -47,10 +47,10 @@ import io.github.gaming32.mrpacklib.Mrpack;
 import io.github.gaming32.mrpacklib.Mrpack.EnvCompatibility;
 import io.github.gaming32.mrpacklib.Mrpack.EnvSide;
 import io.github.gaming32.mrpacklib.packindex.PackFile;
-import io.github.gaming32.superlauncher.util.DisplayErrorMessageMarker;
-import io.github.gaming32.superlauncher.util.GeneralUtil;
-import io.github.gaming32.superlauncher.util.MultiMessageDigest;
-import io.github.gaming32.superlauncher.util.NonWrappingTextPane;
+import io.github.gaming32.superpack.util.DisplayErrorMessageMarker;
+import io.github.gaming32.superpack.util.GeneralUtil;
+import io.github.gaming32.superpack.util.MultiMessageDigest;
+import io.github.gaming32.superpack.util.NonWrappingTextPane;
 
 public final class InstallPackDialog extends JDialog {
     private final Consumer<Boolean> themeListener = isDark -> SwingUtilities.invokeLater(() -> {
@@ -465,7 +465,7 @@ public final class InstallPackDialog extends JDialog {
             hash.substring(2, 4) + '/' +
             hash.substring(4) + '/' +
             file.getPath();
-        return new File(LauncherMain.downloadCacheDir, path);
+        return new File(SuperpackMain.downloadCacheDir, path);
     }
 
     private static final char[] HEX_CHARS = "0123456789abcdef".toCharArray();

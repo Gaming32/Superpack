@@ -25,5 +25,5 @@ jobs:
         uses: actions/upload-artifact@v2
         if: ${{ matrix.java == 8 && matrix.os == 'ubuntu-latest' }}
         with:
-          name: super-launcher-jar-artifact
-          path: target/super-launcher-*.jar
+          name: superpack-jar-artifact
+          path: target/superpack-*.jar

@@ -1,4 +1,4 @@
-package io.github.gaming32.superlauncher.util;
+package io.github.gaming32.superpack.util;
 
 public class DisplayErrorMessageMarker extends RuntimeException {
     /** Constructs a new runtime exception with {@code null} as its

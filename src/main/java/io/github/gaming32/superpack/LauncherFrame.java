@@ -1,4 +1,4 @@
-package io.github.gaming32.superlauncher;
+package io.github.gaming32.superpack;
 
 import java.io.File;
 import java.io.IOException;
@@ -13,7 +13,7 @@ import com.formdev.flatlaf.FlatDarkLaf;
 import com.formdev.flatlaf.FlatLightLaf;
 import com.jthemedetecor.OsThemeDetector;
 
-import io.github.gaming32.superlauncher.util.GeneralUtil;
+import io.github.gaming32.superpack.util.GeneralUtil;
 
 public final class LauncherFrame extends JFrame {
     private final Consumer<Boolean> themeListener = isDark -> SwingUtilities.invokeLater(() -> {
@@ -27,7 +27,7 @@ public final class LauncherFrame extends JFrame {
     private final OsThemeDetector themeDetector;
 
     public LauncherFrame(OsThemeDetector themeDetector) {
-        super("Super Launcher");
+        super("Superpack");
         this.themeDetector = themeDetector;
         themeDetector.registerListener(themeListener);
 

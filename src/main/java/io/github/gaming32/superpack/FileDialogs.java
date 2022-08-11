@@ -1,4 +1,4 @@
-package io.github.gaming32.superlauncher;
+package io.github.gaming32.superpack;
 
 import java.awt.Component;
 import java.io.File;
