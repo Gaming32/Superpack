@@ -18,6 +18,9 @@ import javax.swing.SwingUtilities;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.formdev.flatlaf.FlatDarkLaf;
 import com.formdev.flatlaf.FlatLightLaf;
 import com.jthemedetecor.OsThemeDetector;
@@ -25,8 +28,11 @@ import com.jthemedetecor.OsThemeDetector;
 import io.github.gaming32.superpack.jxtabbedpane.AbstractTabRenderer;
 import io.github.gaming32.superpack.jxtabbedpane.JXTabbedPane;
 import io.github.gaming32.superpack.util.GeneralUtil;
+import io.github.gaming32.superpack.util.HasLogger;
 
-public final class SuperpackMainFrame extends JFrame {
+public final class SuperpackMainFrame extends JFrame implements HasLogger {
+    private static final Logger LOGGER = LoggerFactory.getLogger(SuperpackMainFrame.class);
+
     private final Consumer<Boolean> themeListener = isDark -> SwingUtilities.invokeLater(() -> {
         if (isDark) {
             FlatDarkLaf.setup();
@@ -57,12 +63,17 @@ public final class SuperpackMainFrame extends JFrame {
     }
 
     @Override
+    public Logger getLogger() {
+        return LOGGER;
+    }
+
+    @Override
     public void dispose() {
         super.dispose();
         themeDetector.removeListener(themeListener);
     }
 
-    private final class ImportPanel extends JPanel {
+    private final class ImportPanel extends JPanel implements HasLogger {
         ImportPanel() {
             final JButton[] installPackButtonFR = new JButton[1];
             final JTextField filePathField = new JTextField();
@@ -98,7 +109,7 @@ public final class SuperpackMainFrame extends JFrame {
             installPackButton.addActionListener(ev -> {
                 final File packFile = new File(filePathField.getText());
                 if (!packFile.exists()) {
-                    GeneralUtil.showErrorMessage(this, "Pack file does not exist:\n" + filePathField.getText());
+                    GeneralUtil.showErrorMessage(this, "Pack file does not exist:\n" + filePathField.getText(), getTitle());
                     return;
                 }
                 try {
@@ -130,6 +141,11 @@ public final class SuperpackMainFrame extends JFrame {
 
             setLayout(new GridBagLayout());
             add(body);
+        }
+
+        @Override
+        public Logger getLogger() {
+            return LOGGER;
         }
     }
 }

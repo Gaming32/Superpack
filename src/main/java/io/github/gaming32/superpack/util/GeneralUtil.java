@@ -1,26 +1,29 @@
 package io.github.gaming32.superpack.util;
 
 import java.awt.Component;
+import java.awt.Frame;
 
 import javax.swing.JOptionPane;
-
-import io.github.gaming32.superpack.SuperpackMain;
 
 public final class GeneralUtil {
     private GeneralUtil() {
     }
 
-    public static void showErrorMessage(Component owner, Throwable t) {
+    public static <T extends Component & HasLogger> void showErrorMessage(T owner, Throwable t) {
         showErrorMessage(owner, "Error", t);
     }
 
-    public static void showErrorMessage(Component owner, String logMessage, Throwable t) {
-        SuperpackMain.LOGGER.error(logMessage, t);
+    public static <T extends Component & HasLogger> void showErrorMessage(T owner, String logMessage, Throwable t) {
+        owner.getLogger().error(logMessage, t);
         JOptionPane.showMessageDialog(owner, t.getMessage(), t.getClass().getName(), JOptionPane.ERROR_MESSAGE);
     }
 
-    public static void showErrorMessage(Component owner, String message) {
-        SuperpackMain.LOGGER.error(message);
-        JOptionPane.showMessageDialog(owner, message, SuperpackMain.APP_NAME, JOptionPane.ERROR_MESSAGE);
+    public static <T extends Frame & HasLogger> void showErrorMessage(T owner, String message) {
+        showErrorMessage(owner, message, owner.getTitle());
+    }
+
+    public static <T extends Component & HasLogger> void showErrorMessage(T owner, String message, String title) {
+        owner.getLogger().error(message);
+        JOptionPane.showMessageDialog(owner, message, title, JOptionPane.ERROR_MESSAGE);
     }
 }

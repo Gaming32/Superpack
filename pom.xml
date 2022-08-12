@@ -28,7 +28,7 @@
     <dependency>
       <groupId>com.github.gaming32</groupId>
       <artifactId>mrpacklib</artifactId>
-      <version>0.2</version>
+      <version>9d979177f9</version>
     </dependency>
     <dependency>
       <groupId>com.formdev</groupId>

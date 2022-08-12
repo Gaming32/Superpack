@@ -39,6 +39,9 @@ import javax.swing.ScrollPaneConstants;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.formdev.flatlaf.FlatDarkLaf;
 import com.formdev.flatlaf.FlatLightLaf;
 import com.jthemedetecor.OsThemeDetector;
@@ -49,10 +52,13 @@ import io.github.gaming32.mrpacklib.Mrpack.EnvSide;
 import io.github.gaming32.mrpacklib.packindex.PackFile;
 import io.github.gaming32.superpack.util.DisplayErrorMessageMarker;
 import io.github.gaming32.superpack.util.GeneralUtil;
+import io.github.gaming32.superpack.util.HasLogger;
 import io.github.gaming32.superpack.util.MultiMessageDigest;
 import io.github.gaming32.superpack.util.NonWrappingTextPane;
 
-public final class InstallPackDialog extends JDialog {
+public final class InstallPackDialog extends JDialog implements HasLogger {
+    private static final Logger LOGGER = LoggerFactory.getLogger(InstallPackDialog.class);
+
     private final Consumer<Boolean> themeListener = isDark -> SwingUtilities.invokeLater(() -> {
         if (isDark) {
             FlatDarkLaf.setup();
@@ -89,6 +95,11 @@ public final class InstallPackDialog extends JDialog {
         selectedPack.setText(packZip.getName());
 
         setVisible(true);
+    }
+
+    @Override
+    public Logger getLogger() {
+        return LOGGER;
     }
 
     @Override
@@ -279,8 +290,8 @@ public final class InstallPackDialog extends JDialog {
         installButton.setEnabled(enabled);
     }
 
-    private void print(String s) throws InterruptedException {
-        System.out.print(s);
+    private void println(String s) throws InterruptedException {
+        LOGGER.info(s);
         if (!isVisible()) {
             throw new InterruptedException();
         }
@@ -288,16 +299,12 @@ public final class InstallPackDialog extends JDialog {
             SwingUtilities.invokeAndWait(() -> {
                 installOutput.setEditable(true);
                 installOutput.setCaretPosition(installOutput.getDocument().getLength());
-                installOutput.replaceSelection(s);
+                installOutput.replaceSelection(s + System.lineSeparator());
                 installOutput.setEditable(false);
             });
         } catch (InvocationTargetException | InterruptedException e) {
             GeneralUtil.showErrorMessage(this, e);
         }
-    }
-
-    private void println(String s) throws InterruptedException {
-        print(s + System.lineSeparator());
     }
 
     private void doInstall() {
@@ -308,7 +315,7 @@ public final class InstallPackDialog extends JDialog {
             showSuccessMessage = false;
         } catch (DisplayErrorMessageMarker e) {
             showSuccessMessage = false;
-            JOptionPane.showMessageDialog(this, e.getMessage(), getTitle(), JOptionPane.ERROR_MESSAGE);
+            GeneralUtil.showErrorMessage(this, e);
         } catch (Exception e) {
             showSuccessMessage = false;
             GeneralUtil.showErrorMessage(this, e);
