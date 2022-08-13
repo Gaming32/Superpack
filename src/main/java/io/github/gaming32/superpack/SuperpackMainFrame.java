@@ -1,5 +1,6 @@
 package io.github.gaming32.superpack;
 
+import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.GridBagLayout;
 import java.io.File;
@@ -8,8 +9,10 @@ import java.util.function.Consumer;
 
 import javax.swing.GroupLayout;
 import javax.swing.GroupLayout.Alignment;
+import javax.swing.border.TitledBorder;
 import javax.swing.JButton;
 import javax.swing.JFrame;
+import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextField;
@@ -54,6 +57,7 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
         tabRenderer.setHorizontalTextAlignment(SwingConstants.LEADING);
 
         tabbedPane.addTab("Import from file", new ImportPanel());
+        tabbedPane.addTab("Settings", new SettingsPanel());
 
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         setContentPane(tabbedPane);
@@ -141,6 +145,96 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
 
             setLayout(new GridBagLayout());
             add(body);
+        }
+
+        @Override
+        public Logger getLogger() {
+            return LOGGER;
+        }
+    }
+
+    private final class SettingsPanel extends JPanel implements HasLogger {
+        Thread cacheManageThread;
+
+        SettingsPanel() {
+            setLayout(new GridBagLayout());
+
+            {
+                final JPanel cacheSettings = new JPanel();
+
+                final JLabel cacheSize = new JLabel("Cache size");
+                calculateCacheSize(cacheSize);
+
+                final JButton openCache = new JButton("Open cache folder...");
+                openCache.addActionListener(e -> {
+                    try {
+                        Desktop.getDesktop().open(SuperpackMain.cacheDir);
+                    } catch (Exception ioe) {
+                        GeneralUtil.showErrorMessage(this, ioe);
+                    }
+                });
+
+                final JButton clearCache = new JButton("Clear cache");
+                clearCache.addActionListener(e -> {
+                    cacheManageThread = new Thread(() -> {
+                        try {
+                            SwingUtilities.invokeLater(() -> cacheSize.setText("Cache size: Clearing..."));
+                            GeneralUtil.rmdir(SuperpackMain.cacheDir.toPath());
+                            SuperpackMain.cacheDir.mkdirs();
+                            SuperpackMain.downloadCacheDir.mkdirs();
+                            calculateCacheSize(cacheSize);
+                        } catch (Exception ioe) {
+                            GeneralUtil.showErrorMessage(this, ioe);
+                        }
+                    });
+                    cacheManageThread.setDaemon(true);
+                    cacheManageThread.start();
+                });
+
+                final GroupLayout layout = new GroupLayout(cacheSettings);
+                cacheSettings.setLayout(layout);
+                layout.setAutoCreateGaps(true);
+                layout.setAutoCreateContainerGaps(true);
+                layout.setHorizontalGroup(layout.createParallelGroup()
+                    .addComponent(cacheSize)
+                    .addGroup(layout.createSequentialGroup()
+                        .addComponent(openCache)
+                        .addComponent(clearCache)
+                    )
+                );
+                layout.setVerticalGroup(layout.createSequentialGroup()
+                    .addComponent(cacheSize)
+                    .addGroup(layout.createParallelGroup(Alignment.CENTER)
+                        .addComponent(openCache)
+                        .addComponent(clearCache)
+                    )
+                );
+                cacheSettings.setBorder(new TitledBorder("Cache settings"));
+                add(cacheSettings);
+            }
+        }
+
+        void calculateCacheSize(JLabel cacheSize) {
+            cacheManageThread = new Thread(() -> {
+                SwingUtilities.invokeLater(() -> cacheSize.setText("Cache size: Calculating..."));
+                long size;
+                try {
+                    size = GeneralUtil.getDirectorySize(SuperpackMain.cacheDir.toPath());
+                } catch (Exception e) {
+                    LOGGER.error("Failed to calculate directory size", e);
+                    if (cacheManageThread == Thread.currentThread()) {
+                        SwingUtilities.invokeLater(() -> cacheSize.setText("Cache size: Failure"));
+                    }
+                    return;
+                }
+                if (cacheManageThread != Thread.currentThread()) {
+                    // We were superseded by another calculation thread.
+                    return;
+                }
+                SwingUtilities.invokeLater(() -> cacheSize.setText("Cache size: " + GeneralUtil.getHumanFileSize(size)));
+            }, "CalculateCacheSize");
+            cacheManageThread.setDaemon(true);
+            cacheManageThread.start();
         }
 
         @Override
