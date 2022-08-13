@@ -6,10 +6,10 @@
 
   <groupId>io.github.gaming32</groupId>
   <artifactId>superpack</artifactId>
-  <version>0.1</version>
+  <version>1.0-SNAPSHOT</version>
 
-  <name>superpack</name>
-  <url>https://github.com/Gaming32/TODO</url>
+  <name>Superpack</name>
+  <url>https://github.com/Gaming32/Superpack</url>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
