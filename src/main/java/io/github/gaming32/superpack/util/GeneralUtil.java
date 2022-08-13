@@ -79,4 +79,10 @@ public final class GeneralUtil {
         final String unit = UNITS[divisor / 10];
         return FORMAT.format((double)size / (1L << divisor)) + " " + unit;
     }
+
+    public static int clampToInt(long value) {
+        if (value > Integer.MAX_VALUE) return Integer.MAX_VALUE;
+        if (value < Integer.MIN_VALUE) return Integer.MIN_VALUE;
+        return (int)value;
+    }
 }

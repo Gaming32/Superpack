@@ -32,6 +32,7 @@ import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import javax.swing.JTextPane;
@@ -55,6 +56,7 @@ import io.github.gaming32.superpack.util.GeneralUtil;
 import io.github.gaming32.superpack.util.HasLogger;
 import io.github.gaming32.superpack.util.MultiMessageDigest;
 import io.github.gaming32.superpack.util.NonWrappingTextPane;
+import io.github.gaming32.superpack.util.TrackingInputStream;
 
 public final class InstallPackDialog extends JDialog implements HasLogger {
     private static final Logger LOGGER = LoggerFactory.getLogger(InstallPackDialog.class);
@@ -80,6 +82,10 @@ public final class InstallPackDialog extends JDialog implements HasLogger {
     private Map<String, JCheckBox> optionalCheckboxes;
     private JButton installButton;
     private JTextPane installOutput;
+
+    private JPanel downloadBars;
+    private JProgressBar overallDownloadBar;
+    private JProgressBar singleDownloadBar;
 
     public InstallPackDialog(SuperpackMainFrame parent, File packFile, OsThemeDetector themeDetector) throws IOException {
         super(parent, "Install Pack", ModalityType.APPLICATION_MODAL);
@@ -170,6 +176,18 @@ public final class InstallPackDialog extends JDialog implements HasLogger {
         outputScrollPane.getMinimumSize().height = 20;
         outputScrollPane.setPreferredSize(new Dimension(200, 150));
 
+        overallDownloadBar = new JProgressBar();
+        overallDownloadBar.setStringPainted(true);
+
+        singleDownloadBar = new JProgressBar();
+        singleDownloadBar.setStringPainted(true);
+
+        downloadBars = new JPanel();
+        downloadBars.setLayout(new BoxLayout(downloadBars, BoxLayout.Y_AXIS));
+        downloadBars.add(overallDownloadBar);
+        downloadBars.add(singleDownloadBar);
+        downloadBars.setVisible(false);
+
         GroupLayout layout = new GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setAutoCreateGaps(true);
@@ -209,6 +227,7 @@ public final class InstallPackDialog extends JDialog implements HasLogger {
                 GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE
             )
             .addComponent(outputScrollPane)
+            .addComponent(downloadBars)
         );
         layout.setVerticalGroup(layout.createSequentialGroup()
             .addGroup(layout.createParallelGroup(Alignment.CENTER)
@@ -254,6 +273,7 @@ public final class InstallPackDialog extends JDialog implements HasLogger {
                 GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE
             )
             .addComponent(outputScrollPane)
+            .addComponent(downloadBars)
         );
     }
 
@@ -353,10 +373,17 @@ public final class InstallPackDialog extends JDialog implements HasLogger {
             MessageDigest.getInstance("SHA-512")
         );
         long totalDownloadSize = 0;
-        int installedCount = 0;
+        int[] installedCount = {0};
         int downloadedCount = 0;
         List<PackFile> filesToDownload = pack.getAllFiles(env);
+        resetDownloadBars(filesToDownload.size());
         for (PackFile file : filesToDownload) {
+            SwingUtilities.invokeLater(() -> {
+                overallDownloadBar.setValue(installedCount[0]);
+                overallDownloadBar.setString("Downloading files... " + installedCount[0] + "/" + filesToDownload.size());
+                singleDownloadBar.setValue(0);
+                singleDownloadBar.setString("Downloading file...");
+            });
             if (file.getEnv().get(env) == EnvCompatibility.OPTIONAL) {
                 JCheckBox optionalCheckBox = optionalCheckboxes.get(file.getPath());
                 if (!optionalCheckBox.isSelected()) {
@@ -373,7 +400,7 @@ public final class InstallPackDialog extends JDialog implements HasLogger {
                 );
             }
             destPath.getParentFile().mkdirs();
-            println("Installing " + file.getPath() + " (" + ++installedCount + "/" + filesToDownload.size() + ")");
+            println("Installing " + file.getPath() + " (" + ++installedCount[0] + "/" + filesToDownload.size() + ")");
             if (Files.exists(destPath.toPath()) && Files.size(destPath.toPath()) == file.getFileSize()) {
                 digest.getDigests()[0].reset();
                 try (InputStream is = new DigestInputStream(new FileInputStream(destPath), digest.getDigests()[0])) {
@@ -389,18 +416,33 @@ public final class InstallPackDialog extends JDialog implements HasLogger {
                 }
             }
             File cacheFile = getCacheFile(file);
-            if (cacheFile.isFile()) {
+            if (cacheFile.isFile() && Files.size(cacheFile.toPath()) == file.getFileSize()) {
                 println("   File found in cache at " + cacheFile);
                 Files.copy(cacheFile.toPath(), destPath.toPath(), StandardCopyOption.REPLACE_EXISTING);
                 continue;
             }
             boolean success = false;
+            final String downloadFileSize = GeneralUtil.getHumanFileSize(file.getFileSize());
             for (URL downloadUrl : file.getDownloads()) {
                 println("   Downloading " + downloadUrl);
+                SwingUtilities.invokeLater(() -> {
+                    singleDownloadBar.setMaximum(GeneralUtil.clampToInt(file.getFileSize()));
+                    singleDownloadBar.setValue(0);
+                    singleDownloadBar.setString("Downloading file... 0 B / " + downloadFileSize);
+                });
                 digest.reset();
                 long downloadSize;
-                try (InputStream is = new DigestInputStream(downloadUrl.openStream(), digest)) {
+                try (InputStream is = new TrackingInputStream(
+                    new DigestInputStream(downloadUrl.openStream(), digest),
+                    read -> SwingUtilities.invokeLater(() -> {
+                        singleDownloadBar.setValue(GeneralUtil.clampToInt(read));
+                        singleDownloadBar.setString("Downloading file... " + GeneralUtil.getHumanFileSize(read) + " / " + downloadFileSize);
+                    })
+                )) {
                     downloadSize = Files.copy(is, destPath.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                } catch (IOException e) {
+                    println("      Failed to download " + downloadUrl + ": " + e);
+                    continue;
                 }
                 println("      Downloaded " + downloadSize + " bytes");
                 if (downloadSize != file.getFileSize()) {
@@ -431,10 +473,18 @@ public final class InstallPackDialog extends JDialog implements HasLogger {
                 Files.copy(destPath.toPath(), cacheFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
             } else {
                 println("   Failed to download file.");
-                Files.delete(destPath.toPath());
+                try {
+                    Files.delete(destPath.toPath());
+                } catch (IOException e) {
+                    // Ignore
+                }
             }
         }
         println("Downloaded a total of " + totalDownloadSize + " bytes across " + downloadedCount + " files");
+        SwingUtilities.invokeLater(() -> {
+            overallDownloadBar.setValue(overallDownloadBar.getMaximum());
+            overallDownloadBar.setString("Downloading files... Done!");
+        });
 
         extractOverrides(outputDirFile, null);
         extractOverrides(outputDirFile, env);
@@ -443,28 +493,62 @@ public final class InstallPackDialog extends JDialog implements HasLogger {
         return true;
     }
 
+    private void resetDownloadBars(int count) {
+        SwingUtilities.invokeLater(() -> {
+            overallDownloadBar.setMaximum(count);
+            overallDownloadBar.setValue(0);
+            overallDownloadBar.setString("");
+            singleDownloadBar.setValue(0);
+            singleDownloadBar.setString("");
+            downloadBars.setVisible(true);
+        });
+    }
+
     private void extractOverrides(File outputDirFile, EnvSide side) throws InterruptedException, IOException {
         String sideName = side == null ? "global" : side.toString().toLowerCase();
         println("\nExtracting " + sideName + " overrides...");
         List<ZipEntry> overrides = pack.getOverrides(side);
-        int i = 0;
+        resetDownloadBars(overrides.size());
+        int[] i = {0};
         for (ZipEntry override : overrides) {
+            SwingUtilities.invokeLater(() -> {
+                overallDownloadBar.setValue(i[0]);
+                overallDownloadBar.setString("Extracting " + sideName + " overrides... " + i[0] + "/" + overrides.size());
+                singleDownloadBar.setValue(0);
+                singleDownloadBar.setString("Extracting override...");
+            });
             String baseName = override.getName();
             baseName = baseName.substring(baseName.indexOf('/') + 1);
             File destFile = new File(outputDirFile, baseName);
             if (override.isDirectory()) {
                 destFile.mkdirs();
-                i++;
+                i[0]++;
                 continue;
             }
-            println("Extracting " + override.getName() + " (" + (i + 1) + "/" + overrides.size() + ")");
+            println("Extracting " + override.getName() + " (" + (i[0] + 1) + "/" + overrides.size() + ")");
             destFile.getParentFile().mkdirs();
-            try (InputStream is = packZip.getInputStream(override)) {
+            final String extractFileSize = GeneralUtil.getHumanFileSize(override.getSize());
+            SwingUtilities.invokeLater(() -> {
+                singleDownloadBar.setMaximum(GeneralUtil.clampToInt(override.getSize()));
+                singleDownloadBar.setValue(0);
+                singleDownloadBar.setString("Extracting override... 0 B / " + extractFileSize);
+            });
+            try (InputStream is = new TrackingInputStream(
+                packZip.getInputStream(override),
+                read -> SwingUtilities.invokeLater(() -> {
+                    singleDownloadBar.setValue(GeneralUtil.clampToInt(read));
+                    singleDownloadBar.setString("Extracting override... " + GeneralUtil.getHumanFileSize(read) + " / " + extractFileSize);
+                })
+            )) {
                 Files.copy(is, destFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
             }
-            i++;
+            i[0]++;
         }
         println("Extracted " + overrides.size() + " " + sideName + " overrides");
+        SwingUtilities.invokeLater(() -> {
+            overallDownloadBar.setValue(overallDownloadBar.getMaximum());
+            overallDownloadBar.setString("Extracting " + sideName + " overrides... Done!");
+        });
     }
 
     private static File getCacheFile(PackFile file) {
@@ -472,8 +556,7 @@ public final class InstallPackDialog extends JDialog implements HasLogger {
         String path =
             hash.substring(0, 2) + '/' +
             hash.substring(2, 4) + '/' +
-            hash.substring(4) + '/' +
-            file.getPath();
+            hash.substring(4);
         return new File(SuperpackMain.downloadCacheDir, path);
     }
 
