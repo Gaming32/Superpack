@@ -1,5 +1,6 @@
 package io.github.gaming32.superpack;
 
+import java.awt.Component;
 import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.GridBagLayout;
@@ -58,6 +59,13 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
 
         tabbedPane.addTab("Import from file", new ImportPanel());
         tabbedPane.addTab("Settings", new SettingsPanel());
+
+        tabbedPane.addChangeListener(ev -> {
+            final Component component = tabbedPane.getSelectedComponent();
+            if (component instanceof SettingsPanel) {
+                ((SettingsPanel)component).calculateCacheSize();
+            }
+        });
 
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         setContentPane(tabbedPane);
@@ -154,6 +162,7 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
     }
 
     private final class SettingsPanel extends JPanel implements HasLogger {
+        final JLabel cacheSize;
         Thread cacheManageThread;
 
         SettingsPanel() {
@@ -162,8 +171,8 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
             {
                 final JPanel cacheSettings = new JPanel();
 
-                final JLabel cacheSize = new JLabel("Cache size");
-                calculateCacheSize(cacheSize);
+                cacheSize = new JLabel("Cache size: Calculating...");
+                calculateCacheSize();
 
                 final JButton openCache = new JButton("Open cache folder...");
                 openCache.addActionListener(e -> {
@@ -178,11 +187,10 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
                 clearCache.addActionListener(e -> {
                     cacheManageThread = new Thread(() -> {
                         try {
-                            SwingUtilities.invokeLater(() -> cacheSize.setText("Cache size: Clearing..."));
                             GeneralUtil.rmdir(SuperpackMain.cacheDir.toPath());
                             SuperpackMain.cacheDir.mkdirs();
                             SuperpackMain.downloadCacheDir.mkdirs();
-                            calculateCacheSize(cacheSize);
+                            calculateCacheSize();
                         } catch (Exception ioe) {
                             GeneralUtil.showErrorMessage(this, ioe);
                         }
@@ -214,9 +222,8 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
             }
         }
 
-        void calculateCacheSize(JLabel cacheSize) {
+        void calculateCacheSize() {
             cacheManageThread = new Thread(() -> {
-                SwingUtilities.invokeLater(() -> cacheSize.setText("Cache size: Calculating..."));
                 long size;
                 try {
                     size = GeneralUtil.getDirectorySize(SuperpackMain.cacheDir.toPath());
