@@ -4,6 +4,7 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Desktop;
 import java.awt.Dimension;
+import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Image;
 import java.io.File;
@@ -12,13 +13,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ForkJoinPool;
 import java.util.function.Consumer;
 
 import javax.imageio.ImageIO;
 import javax.swing.BorderFactory;
-import javax.swing.BoxLayout;
 import javax.swing.GroupLayout;
 import javax.swing.GroupLayout.Alignment;
 import javax.swing.ImageIcon;
@@ -32,8 +33,7 @@ import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.border.TitledBorder;
-import javax.swing.event.DocumentEvent;
-import javax.swing.event.DocumentListener;
+import javax.swing.text.Document;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,6 +48,7 @@ import io.github.gaming32.superpack.labrinth.LabrinthGson;
 import io.github.gaming32.superpack.labrinth.SearchResults;
 import io.github.gaming32.superpack.util.GeneralUtil;
 import io.github.gaming32.superpack.util.HasLogger;
+import io.github.gaming32.superpack.util.PlaceholderTextField;
 import io.github.gaming32.superpack.util.SimpleHttp;
 import io.github.gaming32.superpack.util.SoftCacheMap;
 
@@ -82,6 +83,7 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
                 JScrollPane.HORIZONTAL_SCROLLBAR_NEVER
             );
             modrinthTab.setBorder(BorderFactory.createEmptyBorder());
+            modrinthTab.getVerticalScrollBar().setUnitIncrement(16);
             tabbedPane.addTab("Modrinth", modrinthTab);
         }
         tabbedPane.addTab("Import from file", new ImportPanel());
@@ -143,6 +145,7 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
             static final int PER_PAGE = 50;
 
             Thread loadingThread;
+            int totalCount;
 
             MainList() {
                 super();
@@ -151,38 +154,36 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
                 loading.setForeground(new Color(0x2a2c2e));
                 loading.setFont(loading.getFont().deriveFont(48f));
 
-                loadElements(0, results -> {
-                    remove(loading);
+                final PlaceholderTextField searchField = new PlaceholderTextField();
+                searchField.setPlaceholder("Search...");
+                GeneralUtil.addDocumentListener(searchField, ev -> {
+                    final Document document = ev.getDocument();
+                    loadElements(
+                        0,
+                        document.getLength() == 0 ? null : searchField.getText(),
+                        results -> {
+                            for (final Component component : getComponents()) {
+                                if (component != searchField) {
+                                    remove(component);
+                                }
+                            }
+                        }
+                    );
                 });
 
-                // setCellRenderer(new ListCellRenderer<>() {
-                //     Map<SearchResults.Result, Component> cachedCells = new IdentityHashMap<>();
+                loadElements(
+                    0, null,
+                    results -> {
+                        remove(loading);
+                        add(searchField);
+                    }
+                );
 
-                //     @Override
-                //     public Component getListCellRendererComponent(
-                //         JList<? extends SearchResults.Result> list,
-                //         SearchResults.Result value,
-                //         int index,
-                //         boolean isSelected,
-                //         boolean cellHasFocus
-                //     ) {
-                //         return cachedCells.computeIfAbsent(value, key -> {
-                //             final JLabel icon = new JLabel(new ImageIcon(placeholderImage));
-                //             return icon;
-                //         });
-                //     }
-                // });
-
-                // setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-
-                // addListSelectionListener(ev -> {
-                //     final SearchResults.Result project = getSelectedValue();
-                //     if (project == null) return;
-                //     System.out.println("Open " + project);
-                //     clearSelection();
-                // });
-
-                setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
+                setLayout(new GridBagLayout() {{
+                    defaultConstraints.fill = GridBagConstraints.HORIZONTAL;
+                    defaultConstraints.weightx = 1;
+                    defaultConstraints.gridx = 0;
+                }});
                 add(loading);
             }
 
@@ -191,7 +192,11 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
                 return LOGGER;
             }
 
-            void loadElements(int offset, Consumer<SearchResults> onComplete) {
+            void loadElements(
+                int offset,
+                String query,
+                Consumer<SearchResults> onPreComplete
+            ) {
                 if (loadingThread != null) {
                     while (loadingThread.isAlive()) {
                         Thread.onSpinWait(); // Definitely don't Thread.sleep, because this is probably the AWT event thread
@@ -199,15 +204,16 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
                 }
                 loadingThread = new Thread(() -> {
                     final SearchResults results;
+                    final Map<String, Object> search = new HashMap<>(Map.of(
+                        "facets", "[[\"project_type:modpack\"]]",
+                        "offset", offset,
+                        "limit", PER_PAGE
+                    ));
+                    if (query != null) {
+                        search.put("query", query);
+                    }
                     try (
-                        InputStream is = SimpleHttp.createUrl(
-                            MODRINTH_API_ROOT, "/search",
-                            Map.of(
-                                "facets", "[[\"project_type:modpack\"]]",
-                                "offset", offset,
-                                "limit", PER_PAGE
-                            )
-                        ).openStream();
+                        InputStream is = SimpleHttp.createUrl(MODRINTH_API_ROOT, "/search", search).openStream();
                         Reader reader = new InputStreamReader(is);
                     ) {
                         results = LabrinthGson.GSON.fromJson(reader, SearchResults.class);
@@ -216,7 +222,7 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
                         return;
                     }
                     SwingUtilities.invokeLater(() -> {
-                        onComplete.accept(results);
+                        onPreComplete.accept(results);
                         for (final SearchResults.Result project : results.getHits()) {
                             final JButton button = new JButton();
                             final GroupLayout layout = new GroupLayout(button);
@@ -257,6 +263,7 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
                                 });
                             });
                         }
+                        totalCount = results.getTotalHits();
                         revalidate();
                         repaint();
                     });
@@ -271,22 +278,9 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
             final JButton[] installPackButtonFR = new JButton[1];
             final JTextField filePathField = new JTextField();
             filePathField.setPreferredSize(new Dimension(500, filePathField.getPreferredSize().height));
-            filePathField.getDocument().addDocumentListener(new DocumentListener() {
-                @Override
-                public void insertUpdate(DocumentEvent e) {
-                    changedUpdate(e);
-                }
-
-                @Override
-                public void removeUpdate(DocumentEvent e) {
-                    changedUpdate(e);
-                }
-
-                @Override
-                public void changedUpdate(DocumentEvent e) {
-                    installPackButtonFR[0].setEnabled(e.getDocument().getLength() > 0);
-                }
-            });
+            GeneralUtil.addDocumentListener(filePathField, ev ->
+                installPackButtonFR[0].setEnabled(ev.getDocument().getLength() > 0)
+            );
 
             final JButton browseButton = new JButton("Browse...");
             browseButton.addActionListener(e -> {

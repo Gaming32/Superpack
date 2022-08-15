@@ -10,9 +10,13 @@ import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.text.DecimalFormat;
+import java.util.function.Consumer;
 import java.util.stream.LongStream;
 
 import javax.swing.JOptionPane;
+import javax.swing.JTextField;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 
 public final class GeneralUtil {
     private GeneralUtil() {
@@ -84,5 +88,25 @@ public final class GeneralUtil {
         if (value > Integer.MAX_VALUE) return Integer.MAX_VALUE;
         if (value < Integer.MIN_VALUE) return Integer.MIN_VALUE;
         return (int)value;
+    }
+
+    public static void addDocumentListener(JTextField textField, Consumer<DocumentEvent> listener) {
+        // I wish I started this project in Kotlin :/
+        textField.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                listener.accept(e);
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                listener.accept(e);
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                listener.accept(e);
+            }
+        });
     }
 }
