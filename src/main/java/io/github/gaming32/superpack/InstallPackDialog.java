@@ -87,7 +87,7 @@ public final class InstallPackDialog extends JDialog implements HasLogger {
     private JProgressBar overallDownloadBar;
     private JProgressBar singleDownloadBar;
 
-    public InstallPackDialog(SuperpackMainFrame parent, File packFile, OsThemeDetector themeDetector) throws IOException {
+    public InstallPackDialog(SuperpackMainFrame parent, File packFile, String selectedFilename, OsThemeDetector themeDetector) throws IOException {
         super(parent, "Install Pack", ModalityType.APPLICATION_MODAL);
         this.themeDetector = themeDetector;
         this.packFile = packFile;
@@ -98,9 +98,13 @@ public final class InstallPackDialog extends JDialog implements HasLogger {
         createComponents();
 
         pack();
-        selectedPack.setText(packZip.getName());
+        selectedPack.setText(selectedFilename);
 
         setVisible(true);
+    }
+
+    public InstallPackDialog(SuperpackMainFrame parent, File packFile, OsThemeDetector themeDetector) throws IOException {
+        this(parent, packFile, packFile.getAbsolutePath(), themeDetector);
     }
 
     @Override
