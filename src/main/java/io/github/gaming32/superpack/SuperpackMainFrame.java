@@ -28,6 +28,7 @@ import javax.swing.GroupLayout;
 import javax.swing.GroupLayout.Alignment;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
+import javax.swing.JComboBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -38,7 +39,6 @@ import javax.swing.Scrollable;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.border.TitledBorder;
-import javax.swing.text.Document;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -149,9 +149,7 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
 
         ModrinthPanel() {
             try {
-                placeholderImage = ImageIO.read(
-                    getClass().getResource("/placeholder.png")
-                );
+                placeholderImage = ImageIO.read(getClass().getResource("/placeholder.png"));
             } catch (IOException e) {
                 throw new IOError(e);
             }
@@ -196,8 +194,11 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
         private final class MainList extends JPanel implements HasLogger {
             static final int PER_PAGE = 50;
 
+            final JLabel resultsCount;
+            final JComboBox<String> pageSelector;
+
             Thread loadingThread;
-            int totalCount;
+            boolean disablePageSelector;
 
             MainList() {
                 super();
@@ -206,28 +207,61 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
                 loading.setForeground(new Color(0x2a2c2e));
                 loading.setFont(loading.getFont().deriveFont(48f));
 
-                final PlaceholderTextField searchField = new PlaceholderTextField();
-                searchField.setPlaceholder("Search...");
-                GeneralUtil.addDocumentListener(searchField, ev -> {
-                    final Document document = ev.getDocument();
-                    loadElements(
-                        0,
-                        document.getLength() == 0 ? null : searchField.getText(),
-                        results -> {
-                            for (final Component component : getComponents()) {
-                                if (component != searchField) {
-                                    remove(component);
-                                }
+                final JPanel topPanel;
+                {
+                    topPanel = new JPanel();
+
+                    final PlaceholderTextField searchField = new PlaceholderTextField();
+                    searchField.setPlaceholder("Search...");
+
+                    resultsCount = new JLabel();
+
+                    pageSelector = new JComboBox<>();
+
+                    final Consumer<SearchResults> refreshResults = results -> {
+                        for (final Component component : getComponents()) {
+                            if (component != topPanel) {
+                                remove(component);
                             }
                         }
+                    };
+                    GeneralUtil.addDocumentListener(searchField, ev ->
+                        loadElements(
+                            0,
+                            ev.getDocument().getLength() == 0 ? null : searchField.getText(),
+                            refreshResults
+                        )
                     );
-                });
+                    pageSelector.addActionListener(ev -> {
+                        if (disablePageSelector) return;
+                        loadElements(
+                            pageSelector.getSelectedIndex() * PER_PAGE,
+                            searchField.getDocument().getLength() == 0 ? null : searchField.getText(),
+                            refreshResults
+                        );
+                    });
+
+                    final GroupLayout layout = new GroupLayout(topPanel);
+                    topPanel.setLayout(layout);
+                    layout.setAutoCreateGaps(true);
+                    layout.setAutoCreateContainerGaps(true);
+                    layout.setHorizontalGroup(layout.createSequentialGroup()
+                        .addComponent(searchField)
+                        .addComponent(pageSelector, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
+                        .addComponent(resultsCount)
+                    );
+                    layout.setVerticalGroup(layout.createParallelGroup(Alignment.BASELINE)
+                        .addComponent(searchField)
+                        .addComponent(pageSelector)
+                        .addComponent(resultsCount)
+                    );
+                }
 
                 loadElements(
                     0, null,
                     results -> {
                         remove(loading);
-                        add(searchField);
+                        add(topPanel);
                     }
                 );
 
@@ -309,6 +343,8 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
                             add(button);
 
                             if (project.getIconUrl() == null) continue;
+                            // Swing has its own method of downloading and caching images like this, however that lacks
+                            // paralellism and blocks while it loads the images.
                             ForkJoinPool.commonPool().submit(() -> {
                                 final Image image = imageCache.get(project.getId().getId(), key -> {
                                     try {
@@ -324,7 +360,20 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
                                 });
                             });
                         }
-                        totalCount = results.getTotalHits();
+                        resultsCount.setText(results.getTotalHits() + " hits");
+                        {
+                            disablePageSelector = true;
+                            int pageCount = results.getTotalHits() / PER_PAGE;
+                            if (pageCount == 0 || results.getTotalHits() % PER_PAGE != 0) {
+                                pageCount++;
+                            }
+                            pageSelector.removeAllItems();
+                            for (int i = 0; i < pageCount; i++) {
+                                pageSelector.addItem("Page " + (i + 1));
+                            }
+                            pageSelector.setSelectedIndex(results.getOffset() / PER_PAGE);
+                            disablePageSelector = false;
+                        }
                         revalidate();
                         repaint();
                     });
