@@ -14,7 +14,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ForkJoinPool;
 import java.util.function.Consumer;
@@ -59,6 +61,7 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
     private static final Logger LOGGER = LoggerFactory.getLogger(SuperpackMainFrame.class);
     private static final String MODRINTH_API_ROOT = "https://api.modrinth.com/v2/";
 
+    private final List<Consumer<String>> iconThemeListeners = new ArrayList<>();
     private final Consumer<Boolean> themeListener = isDark -> SwingUtilities.invokeLater(() -> {
         if (isDark) {
             FlatDarkLaf.setup();
@@ -66,6 +69,9 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
             FlatLightLaf.setup();
         }
         SwingUtilities.updateComponentTreeUI(this);
+        for (final var iconListener : iconThemeListeners) {
+            iconListener.accept(isDark ? "/dark" : "/light");
+        }
     });
     private final OsThemeDetector themeDetector;
 
@@ -88,6 +94,15 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
             modrinthTab.setBorder(BorderFactory.createEmptyBorder());
             modrinthTab.getVerticalScrollBar().setUnitIncrement(16);
             tabbedPane.addTab("Modrinth", modrinthTab);
+            final int modrinthTabIndex = tabbedPane.getTabCount() - 1;
+            iconThemeListeners.add(root -> {
+                final String iconPath = root + "/modrinth.png";
+                final ImageIcon icon = new ImageIcon(getClass().getResource(iconPath));
+                tabbedPane.setTabComponentAt(
+                    modrinthTabIndex,
+                    tabRenderer.getTabRendererComponent(tabbedPane, "Modrinth", icon, modrinthTabIndex)
+                );
+            });
         }
         tabbedPane.addTab("Import from file", new ImportPanel());
         tabbedPane.addTab("Settings", new SettingsPanel());
@@ -98,6 +113,13 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
                 ((SettingsPanel)component).calculateCacheSize();
             }
         });
+
+        {
+            final boolean isDark = themeDetector.isDark();
+            for (final var iconListener : iconThemeListeners) {
+                iconListener.accept(isDark ? "/dark" : "/light");
+            }
+        }
 
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         setContentPane(tabbedPane);
@@ -126,8 +148,10 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
         final MainList mainList;
 
         ModrinthPanel() {
-            try (InputStream is = getClass().getResourceAsStream("/placeholder.png")) {
-                placeholderImage = ImageIO.read(is).getScaledInstance(THUMBNAIL_SIZE, THUMBNAIL_SIZE, Image.SCALE_SMOOTH);
+            try {
+                placeholderImage = ImageIO.read(
+                    getClass().getResource("/placeholder.png")
+                );
             } catch (IOException e) {
                 throw new IOError(e);
             }
@@ -156,7 +180,7 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
 
         @Override
         public int getScrollableBlockIncrement(Rectangle visibleRect, int orientation, int direction) {
-            return 400; // Appears unused?
+            return 400;
         }
 
         @Override
@@ -212,7 +236,7 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
                     defaultConstraints.weightx = 1;
                     defaultConstraints.gridx = 0;
                 }});
-                add(loading);
+                add(loading, new GridBagConstraints()); // Overrides default constraints
             }
 
             @Override
@@ -305,6 +329,7 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
                         repaint();
                     });
                 }, "ModrinthMainLoadingThread");
+                loadingThread.setDaemon(true);
                 loadingThread.start();
             }
         }
