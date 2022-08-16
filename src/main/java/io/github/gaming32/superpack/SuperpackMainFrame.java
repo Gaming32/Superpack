@@ -7,6 +7,7 @@ import java.awt.Dimension;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Image;
+import java.awt.Rectangle;
 import java.io.File;
 import java.io.IOError;
 import java.io.IOException;
@@ -20,6 +21,7 @@ import java.util.function.Consumer;
 
 import javax.imageio.ImageIO;
 import javax.swing.BorderFactory;
+import javax.swing.BoxLayout;
 import javax.swing.GroupLayout;
 import javax.swing.GroupLayout.Alignment;
 import javax.swing.ImageIcon;
@@ -30,6 +32,7 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextField;
+import javax.swing.Scrollable;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.border.TitledBorder;
@@ -114,7 +117,7 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
         themeDetector.removeListener(themeListener);
     }
 
-    private final class ModrinthPanel extends JPanel implements HasLogger {
+    private final class ModrinthPanel extends JPanel implements HasLogger, Scrollable {
         final static int THUMBNAIL_SIZE = 64;
 
         final Image placeholderImage;
@@ -131,7 +134,7 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
 
             mainList = new MainList();
 
-            setLayout(new GridBagLayout());
+            setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
 
             add(mainList);
         }
@@ -139,6 +142,31 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
         @Override
         public Logger getLogger() {
             return LOGGER;
+        }
+
+        @Override
+        public Dimension getPreferredScrollableViewportSize() {
+            return getPreferredSize();
+        }
+
+        @Override
+        public int getScrollableUnitIncrement(Rectangle visibleRect, int orientation, int direction) {
+            return 40;
+        }
+
+        @Override
+        public int getScrollableBlockIncrement(Rectangle visibleRect, int orientation, int direction) {
+            return 400; // Appears unused?
+        }
+
+        @Override
+        public boolean getScrollableTracksViewportWidth() {
+            return true;
+        }
+
+        @Override
+        public boolean getScrollableTracksViewportHeight() {
+            return false;
         }
 
         private final class MainList extends JPanel implements HasLogger {
@@ -232,19 +260,28 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
                             });
 
                             final JLabel icon = new JLabel(new ImageIcon(placeholderImage));
+
                             final JLabel title = new JLabel(project.getTitle());
+                            title.setFont(title.getFont().deriveFont(24f));
+
+                            final JLabel description = new JLabel(project.getDescription());
+
+                            final JPanel details = new JPanel();
+                            details.setLayout(new BoxLayout(details, BoxLayout.Y_AXIS));
+                            details.setBackground(new Color(0, 0, 0, 0));
+                            details.add(title);
+                            details.add(description);
 
                             layout.setAutoCreateGaps(true);
                             layout.setAutoCreateContainerGaps(true);
                             layout.setHorizontalGroup(layout.createSequentialGroup()
                                 .addComponent(icon, THUMBNAIL_SIZE, THUMBNAIL_SIZE, THUMBNAIL_SIZE)
-                                .addComponent(title)
+                                .addComponent(details)
                             );
                             layout.setVerticalGroup(layout.createParallelGroup(GroupLayout.Alignment.CENTER)
                                 .addComponent(icon, THUMBNAIL_SIZE, THUMBNAIL_SIZE, THUMBNAIL_SIZE)
-                                .addComponent(title)
+                                .addComponent(details)
                             );
-                            button.setMaximumSize(new Dimension(Integer.MAX_VALUE, button.getMaximumSize().height));
                             add(button);
 
                             if (project.getIconUrl() == null) continue;
