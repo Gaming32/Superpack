@@ -16,7 +16,7 @@ public class SearchResults {
     private int totalHits;
 
     @Data
-    public static class Result implements HasId {
+    public static class Result implements BaseProject {
         private ModrinthId projectId;
         private String projectType;
         private String slug;
@@ -45,7 +45,17 @@ public class SearchResults {
 
         @Override
         public void setId(ModrinthId id) {
-            setProjectId(id);
+            projectId = id;
+        }
+
+        @Override
+        public int getFollowers() {
+            return follows;
+        }
+
+        @Override
+        public void setFollowers(int followers) {
+            follows = followers;
         }
     }
 }

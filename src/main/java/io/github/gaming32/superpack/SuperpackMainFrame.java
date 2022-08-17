@@ -1,19 +1,24 @@
 package io.github.gaming32.superpack;
 
+import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Cursor;
 import java.awt.Desktop;
 import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Image;
 import java.awt.Rectangle;
 import java.io.File;
-import java.io.IOError;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -29,16 +34,22 @@ import javax.swing.GroupLayout.Alignment;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
+import javax.swing.JEditorPane;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextField;
+import javax.swing.OverlayLayout;
 import javax.swing.Scrollable;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
+import javax.swing.UIManager;
+import javax.swing.border.EmptyBorder;
 import javax.swing.border.TitledBorder;
+import javax.swing.event.HyperlinkEvent;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,9 +58,13 @@ import com.formdev.flatlaf.FlatDarkLaf;
 import com.formdev.flatlaf.FlatLightLaf;
 import com.jthemedetecor.OsThemeDetector;
 
+import io.github.gaming32.mrpacklib.Mrpack.EnvCompatibility;
 import io.github.gaming32.superpack.jxtabbedpane.AbstractTabRenderer;
 import io.github.gaming32.superpack.jxtabbedpane.JXTabbedPane;
+import io.github.gaming32.superpack.labrinth.BaseProject;
 import io.github.gaming32.superpack.labrinth.LabrinthGson;
+import io.github.gaming32.superpack.labrinth.ModrinthId;
+import io.github.gaming32.superpack.labrinth.Project;
 import io.github.gaming32.superpack.labrinth.SearchResults;
 import io.github.gaming32.superpack.util.GeneralUtil;
 import io.github.gaming32.superpack.util.HasLogger;
@@ -140,21 +155,19 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
     }
 
     private final class ModrinthPanel extends JPanel implements HasLogger, Scrollable {
-        final static int THUMBNAIL_SIZE = 64;
+        static final int THUMBNAIL_SIZE = 64;
 
-        final Image placeholderImage;
+        final ImageIcon placeholderIcon;
         final SoftCacheMap<String, Image> imageCache = new SoftCacheMap<>();
 
         final MainList mainList;
+        final ModpackInformationPanel modpackInformationPanel;
 
         ModrinthPanel() {
-            try {
-                placeholderImage = ImageIO.read(getClass().getResource("/placeholder.png"));
-            } catch (IOException e) {
-                throw new IOError(e);
-            }
+            placeholderIcon = new ImageIcon(getClass().getResource("/placeholder.png"));
 
             mainList = new MainList();
+            modpackInformationPanel = new ModpackInformationPanel();
 
             setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
 
@@ -189,6 +202,23 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
         @Override
         public boolean getScrollableTracksViewportHeight() {
             return false;
+        }
+
+        void loadProjectIcon(BaseProject project, Consumer<Image> completionHandler) {
+            // Swing has its own method of downloading and caching images like this, however that lacks
+            // paralellism and blocks while it loads the images.
+            ForkJoinPool.commonPool().submit(() -> {
+                final Image image = imageCache.get(project.getId().getId(), key -> {
+                    try {
+                        return ImageIO.read(project.getIconUrl()).getScaledInstance(THUMBNAIL_SIZE, THUMBNAIL_SIZE, Image.SCALE_SMOOTH);
+                    } catch (IOException e) {
+                        LOGGER.error("Error loading icon for {}", project.getSlug(), e);
+                        return null;
+                    }
+                });
+                if (image == null) return;
+                SwingUtilities.invokeLater(() -> completionHandler.accept(image));
+            });
         }
 
         private final class MainList extends JPanel implements HasLogger {
@@ -300,7 +330,7 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
                     }
                     try (
                         InputStream is = SimpleHttp.createUrl(MODRINTH_API_ROOT, "/search", search).openStream();
-                        Reader reader = new InputStreamReader(is);
+                        Reader reader = new InputStreamReader(is, StandardCharsets.UTF_8);
                     ) {
                         results = LabrinthGson.GSON.fromJson(reader, SearchResults.class);
                     } catch (Exception e) {
@@ -315,18 +345,21 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
                             button.setLayout(layout);
                             button.addActionListener(ev -> {
                                 LOGGER.info("Clicked {}", project.getTitle());
+                                modpackInformationPanel.loadProject(project.getId());
+                                ModrinthPanel.this.remove(this);
+                                ModrinthPanel.this.add(modpackInformationPanel);
                             });
 
-                            final JLabel icon = new JLabel(new ImageIcon(placeholderImage));
+                            final JLabel icon = new JLabel(placeholderIcon);
 
                             final JLabel title = new JLabel(project.getTitle());
                             title.setFont(title.getFont().deriveFont(24f));
 
-                            final JLabel description = new JLabel(project.getDescription());
+                            final JLabel description = new JLabel("<html>" + project.getDescription() + "</html>");
 
                             final JPanel details = new JPanel();
                             details.setLayout(new BoxLayout(details, BoxLayout.Y_AXIS));
-                            details.setBackground(new Color(0, 0, 0, 0));
+                            details.setOpaque(false);
                             details.add(title);
                             details.add(description);
 
@@ -343,24 +376,9 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
                             add(button);
 
                             if (project.getIconUrl() == null) continue;
-                            // Swing has its own method of downloading and caching images like this, however that lacks
-                            // paralellism and blocks while it loads the images.
-                            ForkJoinPool.commonPool().submit(() -> {
-                                final Image image = imageCache.get(project.getId().getId(), key -> {
-                                    try {
-                                        return ImageIO.read(project.getIconUrl()).getScaledInstance(THUMBNAIL_SIZE, THUMBNAIL_SIZE, Image.SCALE_SMOOTH);
-                                    } catch (IOException e) {
-                                        LOGGER.error("Error loading icon for {}", project.getSlug(), e);
-                                        return null;
-                                    }
-                                });
-                                if (image == null) return;
-                                SwingUtilities.invokeLater(() -> {
-                                    icon.setIcon(new ImageIcon(image));
-                                });
-                            });
+                            loadProjectIcon(project, image -> icon.setIcon(new ImageIcon(image)));
                         }
-                        resultsCount.setText(results.getTotalHits() + " hits");
+                        resultsCount.setText(results.getTotalHits() + " hit" + (results.getTotalHits() == 1 ? "" : "s"));
                         {
                             disablePageSelector = true;
                             int pageCount = results.getTotalHits() / PER_PAGE;
@@ -377,7 +395,188 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
                         revalidate();
                         repaint();
                     });
-                }, "ModrinthMainLoadingThread");
+                }, "ModrinthSearchThread");
+                loadingThread.setDaemon(true);
+                loadingThread.start();
+            }
+        }
+
+        private final class ModpackInformationPanel extends JPanel implements HasLogger {
+            final JPanel mainPanel;
+            final JLabel loading;
+
+            Thread loadingThread;
+
+            ModpackInformationPanel() {
+                final JButton backButton = new JButton("< Back to Search");
+                backButton.addActionListener(ev -> {
+                    ModrinthPanel.this.remove(this);
+                    ModrinthPanel.this.add(mainList);
+                });
+
+                final JPanel backPanel = new JPanel();
+                backPanel.setLayout(new FlowLayout(FlowLayout.LEFT));
+                backPanel.setOpaque(false);
+                backPanel.add(backButton);
+
+                loading = new JLabel("Loading...", JLabel.CENTER);
+                loading.setAlignmentX(JLabel.CENTER_ALIGNMENT);
+                loading.setForeground(new Color(0x2a2c2e));
+                loading.setFont(loading.getFont().deriveFont(48f));
+
+                mainPanel = new JPanel();
+                mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
+
+                final OverlayLayout layout = new OverlayLayout(this);
+                setLayout(layout);
+                add(backPanel);
+                add(mainPanel);
+            }
+
+            @Override
+            public Logger getLogger() {
+                return LOGGER;
+            }
+
+            @Override
+            public void doLayout() {
+                for (final Component component : getComponents()) {
+                    component.setSize(component.getPreferredSize());
+                }
+                super.doLayout();
+            }
+
+            void loadProject(ModrinthId projectId) {
+                mainPanel.removeAll();
+                mainPanel.add(loading);
+                if (loadingThread != null) {
+                    while (loadingThread.isAlive()) {
+                        Thread.onSpinWait(); // Definitely don't Thread.sleep, because this is probably the AWT event thread
+                    }
+                }
+                loadingThread = new Thread(() -> {
+                    final Project project;
+                    try (
+                        InputStream is = SimpleHttp.createUrl(MODRINTH_API_ROOT, "/project/" + projectId, Map.of()).openStream();
+                        Reader reader = new InputStreamReader(is, StandardCharsets.UTF_8);
+                    ) {
+                        project = LabrinthGson.GSON.fromJson(reader, Project.class);
+                    } catch (Exception e) {
+                        getLogger().error("Error requesting project", e);
+                        return;
+                    }
+                    LOGGER.info("Received project information for {}", project.getTitle());
+                    SwingUtilities.invokeLater(() -> {
+                        mainPanel.removeAll();
+
+                        final JPanel nameAndIcon = new JPanel();
+                        nameAndIcon.setLayout(new FlowLayout());
+
+                        final JLabel icon = new JLabel(placeholderIcon);
+                        nameAndIcon.add(icon);
+
+                        final JLabel title = new JLabel(project.getTitle());
+                        title.setFont(title.getFont().deriveFont(24f));
+                        nameAndIcon.add(title);
+
+                        mainPanel.add(nameAndIcon);
+
+                        JLabel sideNote = null;
+                        if (project.getClientSide() == EnvCompatibility.UNSUPPORTED) {
+                            sideNote = new JLabel("Server pack");
+                        } else if (project.getServerSide() == EnvCompatibility.UNSUPPORTED) {
+                            sideNote = new JLabel("Client pack");
+                        }
+                        if (sideNote != null) {
+                            sideNote.setHorizontalAlignment(JLabel.CENTER);
+                            sideNote.setAlignmentX(JLabel.CENTER_ALIGNMENT);
+                            sideNote.setFont(sideNote.getFont().deriveFont(Font.BOLD));
+                            mainPanel.add(sideNote);
+                        }
+
+                        final JLabel description = new JLabel("<html>" + project.getDescription() + "</html>", JLabel.CENTER);
+                        description.setAlignmentX(JLabel.CENTER_ALIGNMENT);
+                        description.setBorder(new EmptyBorder(10, 10, 10, 10));
+                        mainPanel.add(description);
+
+                        final JPanel actionPanel = new JPanel();
+
+                        final JButton download = new JButton("Download");
+                        download.addActionListener(ev -> {
+                            LOGGER.info("Download {}", project.getTitle());
+                        });
+                        actionPanel.add(download);
+
+                        final JButton viewOnModrinth = new JButton("View on Modrinth");
+                        viewOnModrinth.addActionListener(ev -> {
+                            try {
+                                Desktop.getDesktop().browse(new URI("https://modrinth.com/modpack/" + project.getSlug()));
+                            } catch (Exception e) {
+                                final String message = "Failed to open " + project.getSlug() + " on Modrinth";
+                                LOGGER.error(message, e);
+                                JOptionPane.showMessageDialog(this, message, getTitle(), JOptionPane.ERROR_MESSAGE);
+                            }
+                        });
+                        actionPanel.add(viewOnModrinth);
+
+                        mainPanel.add(actionPanel);
+
+                        final JPanel bodyPanel = new JPanel();
+                        bodyPanel.setBorder(
+                            // This border looks nice, but we don't have a title, so we can't just use TitledBorder
+                            UIManager.getBorder("TitledBorder.border")
+                        );
+                        bodyPanel.setLayout(new BorderLayout());
+
+                        // final JLabel body = new JLabel("Loading body...");
+                        // final JTextPane body = new JTextPane();
+                        // body.setContentType("text/html");
+                        final JEditorPane body = new JEditorPane();
+                        body.setEditorKit(JEditorPane.createEditorKitForContentType("text/html"));
+                        body.addHyperlinkListener(ev -> {
+                            if (ev.getEventType() == HyperlinkEvent.EventType.ACTIVATED) {
+                                try {
+                                    Desktop.getDesktop().browse(ev.getURL().toURI());
+                                } catch (Exception e) {
+                                    GeneralUtil.showErrorMessage(this, "Failed to open link", e);
+                                }
+                            } else if (ev.getEventType() == HyperlinkEvent.EventType.ENTERED) {
+                                setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+                            } else if (ev.getEventType() == HyperlinkEvent.EventType.EXITED) {
+                                setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+                            }
+                        });
+                        body.setText("<html>Loading body...</html>");
+                        body.setEditable(false);
+                        body.setOpaque(false);
+                        bodyPanel.add(body);
+
+                        while (loadingThread.isAlive()) {
+                            Thread.onSpinWait(); // Definitely don't Thread.sleep, because this is the AWT event thread
+                        }
+                        loadingThread = new Thread(() -> {
+                            final String markdown;
+                            try {
+                                markdown = GeneralUtil.renderMarkdown(project.getBody());
+                            } catch (Exception e) {
+                                LOGGER.error("Error rendering body", e);
+                                return;
+                            }
+                            LOGGER.info("Received rendered markdown");
+                            SwingUtilities.invokeLater(() -> {
+                                body.setText("<html>" + markdown + "</html>");
+                                body.setCaretPosition(0);
+                            });
+                        }, "MarkdownRenderThread");
+                        loadingThread.setDaemon(true);
+                        loadingThread.start();
+
+                        mainPanel.add(bodyPanel);
+
+                        mainPanel.revalidate();
+                        mainPanel.repaint();
+                    });
+                }, "ModrinthProjectThread");
                 loadingThread.setDaemon(true);
                 loadingThread.start();
             }

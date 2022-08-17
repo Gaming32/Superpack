@@ -7,7 +7,7 @@ import io.github.gaming32.mrpacklib.Mrpack.EnvCompatibility;
 import lombok.Data;
 
 @Data
-public class Project implements HasId {
+public class Project implements BaseProject {
     private ModrinthId id;
     private String slug;
     private String projectType;
