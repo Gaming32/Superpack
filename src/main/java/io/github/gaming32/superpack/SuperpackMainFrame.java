@@ -229,6 +229,7 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
 
             Thread loadingThread;
             boolean disablePageSelector;
+            int cachedScrollValue;
 
             MainList() {
                 super();
@@ -346,6 +347,10 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
                             button.addActionListener(ev -> {
                                 LOGGER.info("Clicked {}", project.getTitle());
                                 modpackInformationPanel.loadProject(project.getId());
+                                final JScrollPane scrollPane = (JScrollPane)SwingUtilities.getAncestorOfClass(JScrollPane.class, this);
+                                if (scrollPane != null) {
+                                    cachedScrollValue = scrollPane.getVerticalScrollBar().getValue();
+                                }
                                 ModrinthPanel.this.remove(this);
                                 ModrinthPanel.this.add(modpackInformationPanel);
                             });
@@ -412,6 +417,13 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
                 backButton.addActionListener(ev -> {
                     ModrinthPanel.this.remove(this);
                     ModrinthPanel.this.add(mainList);
+                    SwingUtilities.invokeLater(() -> { // Wait until after the GUI refreshes
+                        final JScrollPane scrollPane = (JScrollPane)SwingUtilities.getAncestorOfClass(JScrollPane.class, mainList);
+                        if (scrollPane != null) {
+                            scrollPane.getVerticalScrollBar().setValue(mainList.cachedScrollValue);
+                        }
+                        mainList.cachedScrollValue = 0;
+                    });
                 });
 
                 final JPanel backPanel = new JPanel();
