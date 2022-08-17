@@ -351,6 +351,9 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
                             });
 
                             final JLabel icon = new JLabel(placeholderIcon);
+                            if (project.getIconUrl() != null) {
+                                loadProjectIcon(project, image -> icon.setIcon(new ImageIcon(image)));
+                            }
 
                             final JLabel title = new JLabel(project.getTitle());
                             title.setFont(title.getFont().deriveFont(24f));
@@ -374,9 +377,6 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
                                 .addComponent(details)
                             );
                             add(button);
-
-                            if (project.getIconUrl() == null) continue;
-                            loadProjectIcon(project, image -> icon.setIcon(new ImageIcon(image)));
                         }
                         resultsCount.setText(results.getTotalHits() + " hit" + (results.getTotalHits() == 1 ? "" : "s"));
                         {
@@ -473,6 +473,9 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
                         nameAndIcon.setLayout(new FlowLayout());
 
                         final JLabel icon = new JLabel(placeholderIcon);
+                        if (project.getIconUrl() != null) {
+                            loadProjectIcon(project, image -> icon.setIcon(new ImageIcon(image)));
+                        }
                         nameAndIcon.add(icon);
 
                         final JLabel title = new JLabel(project.getTitle());
