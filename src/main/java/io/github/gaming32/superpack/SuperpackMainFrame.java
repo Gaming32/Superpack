@@ -725,6 +725,7 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
                         getLogger().error("Error requesting versions", e);
                         return;
                     }
+                    LOGGER.info("Received versions information for {}", projectId);
                     SwingUtilities.invokeLater(() -> {
                         onPreComplete.accept(results);
                         for (final Version version : results) {
@@ -781,6 +782,9 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
                                 button.add(centerPanel);
                             }
                             button.add(new JLabel("<html><b>" + version.getDownloads() + "</b> downloads</html>"));
+                            button.addActionListener(ev -> {
+                                LOGGER.info("Download version {}", version.getName());
+                            });
                             add(button);
                         }
                         resultsCount.setText(results.length + " version" + (results.length == 1 ? "" : "s"));
