@@ -23,6 +23,8 @@ import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.stream.LongStream;
 
+import javax.swing.AbstractButton;
+import javax.swing.ButtonModel;
 import javax.swing.JOptionPane;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
@@ -200,5 +202,15 @@ public final class GeneralUtil {
 
     public static <T> Optional<T> findFirst(Iterator<T> iterator) {
         return Optional.ofNullable(iterator.hasNext() ? iterator.next() : null);
+    }
+
+    public static void callAction(AbstractButton button) {
+        final ButtonModel model = button.getModel();
+        final boolean armed = model.isArmed();
+        final boolean pressed = model.isPressed();
+        if (!armed) model.setArmed(true);
+        model.setPressed(!pressed);
+        model.setPressed(pressed);
+        if (!armed) model.setArmed(false);
     }
 }

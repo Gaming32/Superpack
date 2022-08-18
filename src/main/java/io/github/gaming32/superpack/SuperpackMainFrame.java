@@ -14,6 +14,7 @@ import java.awt.GridLayout;
 import java.awt.Image;
 import java.awt.Rectangle;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -57,6 +58,7 @@ import javax.swing.OverlayLayout;
 import javax.swing.Scrollable;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
+import javax.swing.Timer;
 import javax.swing.UIManager;
 import javax.swing.event.HyperlinkEvent;
 
@@ -74,7 +76,6 @@ import io.github.gaming32.superpack.jxtabbedpane.AbstractTabRenderer;
 import io.github.gaming32.superpack.jxtabbedpane.JXTabbedPane;
 import io.github.gaming32.superpack.labrinth.BaseProject;
 import io.github.gaming32.superpack.labrinth.LabrinthGson;
-import io.github.gaming32.superpack.labrinth.ModrinthId;
 import io.github.gaming32.superpack.labrinth.Project;
 import io.github.gaming32.superpack.labrinth.SearchResults;
 import io.github.gaming32.superpack.labrinth.Version;
@@ -284,6 +285,19 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
                     final PlaceholderTextField searchField = new PlaceholderTextField();
                     searchField.setPlaceholder("Search...");
 
+                    final JButton gotoButton = new JButton("Jump to Project...");
+                    gotoButton.addActionListener(ev -> {
+                        final String id = JOptionPane.showInputDialog(
+                            SuperpackMainFrame.this,
+                            "Enter the ID or slug of the modpack you want to view:",
+                            "Jump to ID",
+                            JOptionPane.QUESTION_MESSAGE
+                        );
+                        LOGGER.info("Jump to ID {}", id);
+                        if (id == null) return;
+                        loadProject(id);
+                    });
+
                     resultsCount = new JLabel();
 
                     pageSelector = new JComboBox<>();
@@ -317,11 +331,13 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
                     layout.setAutoCreateContainerGaps(true);
                     layout.setHorizontalGroup(layout.createSequentialGroup()
                         .addComponent(searchField)
+                        .addComponent(gotoButton)
                         .addComponent(pageSelector, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
                         .addComponent(resultsCount)
                     );
                     layout.setVerticalGroup(layout.createParallelGroup(Alignment.BASELINE)
                         .addComponent(searchField)
+                        .addComponent(gotoButton)
                         .addComponent(pageSelector)
                         .addComponent(resultsCount)
                     );
@@ -385,6 +401,9 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
                         results = LabrinthGson.GSON.fromJson(reader, SearchResults.class);
                     } catch (Exception e) {
                         getLogger().error("Error requesting modpacks", e);
+                        final Timer timer = new Timer(5000, ev -> loadElements(offset, query, onPreComplete));
+                        timer.setRepeats(false);
+                        timer.start();
                         return;
                     }
                     SwingUtilities.invokeLater(() -> {
@@ -395,13 +414,7 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
                             button.setLayout(layout);
                             button.addActionListener(ev -> {
                                 LOGGER.info("Clicked {}", project.getTitle());
-                                modpackInformationPanel.loadProject(project.getId());
-                                final JScrollPane scrollPane = (JScrollPane)SwingUtilities.getAncestorOfClass(JScrollPane.class, this);
-                                if (scrollPane != null) {
-                                    cachedScrollValue = scrollPane.getVerticalScrollBar().getValue();
-                                }
-                                ModrinthPanel.this.remove(this);
-                                ModrinthPanel.this.add(modpackInformationPanel);
+                                loadProject(project.getId().toString());
                             });
 
                             final JLabel icon = new JLabel(placeholderIcon);
@@ -453,9 +466,20 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
                 loadingThread.setDaemon(true);
                 loadingThread.start();
             }
+
+            void loadProject(String projectIdOrSlug) {
+                modpackInformationPanel.loadProject(projectIdOrSlug);
+                final JScrollPane scrollPane = (JScrollPane)SwingUtilities.getAncestorOfClass(JScrollPane.class, this);
+                if (scrollPane != null) {
+                    cachedScrollValue = scrollPane.getVerticalScrollBar().getValue();
+                }
+                ModrinthPanel.this.remove(this);
+                ModrinthPanel.this.add(modpackInformationPanel);
+            }
         }
 
         private final class ModpackInformationPanel extends JPanel implements HasLogger, HasCachedScrollValue {
+            final JButton backButton;
             final JPanel mainPanel;
             final JLabel loading;
 
@@ -463,7 +487,7 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
             int cachedScrollValue = 0;
 
             ModpackInformationPanel() {
-                final JButton backButton = createBackButton("< Back to Search", this, mainList);
+                backButton = createBackButton("< Back to Search", this, mainList);
 
                 final JPanel backPanel = new JPanel();
                 backPanel.setLayout(new FlowLayout(FlowLayout.LEFT));
@@ -506,7 +530,7 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
                 super.doLayout();
             }
 
-            void loadProject(ModrinthId projectId) {
+            void loadProject(String projectIdOrSlug) {
                 mainPanel.removeAll();
                 mainPanel.add(loading);
                 if (loadingThread != null) {
@@ -517,12 +541,18 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
                 loadingThread = new Thread(() -> {
                     final Project project;
                     try (
-                        InputStream is = SimpleHttp.createUrl(MODRINTH_API_ROOT, "/project/" + projectId, Map.of()).openStream();
+                        InputStream is = SimpleHttp.createUrl(MODRINTH_API_ROOT, "/project/" + projectIdOrSlug, Map.of()).openStream();
                         Reader reader = new InputStreamReader(is, StandardCharsets.UTF_8);
                     ) {
                         project = LabrinthGson.GSON.fromJson(reader, Project.class);
                     } catch (Exception e) {
                         getLogger().error("Error requesting project", e);
+                        if (e instanceof FileNotFoundException) {
+                            GeneralUtil.onlyShowErrorMessage(this, "Could not find project " + projectIdOrSlug);
+                        } else {
+                            GeneralUtil.onlyShowErrorMessage(this, "Could not load project");
+                        }
+                        SwingUtilities.invokeLater(() -> GeneralUtil.callAction(backButton));
                         return;
                     }
                     LOGGER.info("Received project information for {}", project.getTitle());
@@ -572,7 +602,7 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
                         final JButton download = new JButton("Download");
                         download.addActionListener(ev -> {
                             LOGGER.info("Download {}", project.getTitle());
-                            versionsList.loadProject(projectId, defaultSide);
+                            versionsList.loadProject(projectIdOrSlug, defaultSide);
                             ModrinthPanel.this.remove(this);
                             ModrinthPanel.this.add(versionsList);
                         });
@@ -653,10 +683,11 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
         private final class VersionsList extends JPanel implements HasLogger {
             final JLabel loading;
             final JPanel topPanel;
+            final JButton backButtonPack;
             final JLabel resultsCount;
             final JCheckBox featuredOnly;
 
-            ModrinthId projectId;
+            String projectIdOrSlug;
             EnvSide defaultSide;
             Thread loadingThread;
 
@@ -667,14 +698,14 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
                 topPanel.setLayout(new BorderLayout());
 
                 {
-                    final JButton backButtonHome = createBackButton("< Back to Search", this, mainList);
+                    backButtonPack = createBackButton("< Back to Pack", this, modpackInformationPanel);
 
-                    final JButton backButtonPack = createBackButton("Back to Pack", this, modpackInformationPanel);
+                    final JButton backButtonHome = createBackButton("Back to Search", this, mainList);
 
                     final JPanel topPanelLeft = new JPanel();
                     topPanelLeft.setLayout(new FlowLayout(FlowLayout.LEFT));
-                    topPanelLeft.add(backButtonHome);
                     topPanelLeft.add(backButtonPack);
+                    topPanelLeft.add(backButtonHome);
                     topPanel.add(topPanelLeft, BorderLayout.WEST);
                 }
 
@@ -709,10 +740,10 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
                 return LOGGER;
             }
 
-            void loadProject(ModrinthId projectId, EnvSide defaultSide) {
+            void loadProject(String projectIdOrSlug, EnvSide defaultSide) {
                 removeAll();
                 add(loading, new GridBagConstraints()); // Overrides default constraints
-                this.projectId = projectId;
+                this.projectIdOrSlug = projectIdOrSlug;
                 this.defaultSide = defaultSide;
                 loadElements(results -> {
                     remove(loading);
@@ -733,15 +764,17 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
                         query.put("featured", true);
                     }
                     try (
-                        InputStream is = SimpleHttp.createUrl(MODRINTH_API_ROOT, "/project/" + projectId + "/version", query).openStream();
+                        InputStream is = SimpleHttp.createUrl(MODRINTH_API_ROOT, "/project/" + projectIdOrSlug + "/version", query).openStream();
                         Reader reader = new InputStreamReader(is, StandardCharsets.UTF_8);
                     ) {
                         results = LabrinthGson.GSON.fromJson(reader, Version[].class);
                     } catch (Exception e) {
                         getLogger().error("Error requesting versions", e);
+                        GeneralUtil.onlyShowErrorMessage(this, "Could not load project versions");
+                        SwingUtilities.invokeLater(() -> GeneralUtil.callAction(backButtonPack));
                         return;
                     }
-                    LOGGER.info("Received versions information for {}", projectId);
+                    LOGGER.info("Received versions information for {}", projectIdOrSlug);
                     SwingUtilities.invokeLater(() -> {
                         onPreComplete.accept(results);
                         for (final Version version : results) {

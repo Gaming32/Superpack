@@ -20,7 +20,7 @@ public class Project implements BaseProject {
     private Date updated;
     private Date approved;
     private String status;
-    private String moderatorMessage;
+    private ModeratorMessage moderatorMessage;
     private License license;
     private EnvCompatibility clientSide;
     private EnvCompatibility serverSide;
@@ -36,6 +36,12 @@ public class Project implements BaseProject {
     private URL discordUrl;
     private DonationUrl[] donationUrls;
     private GalleryImage[] gallery;
+
+    @Data
+    public static class ModeratorMessage {
+        private String message;
+        private String body;
+    }
 
     @Data
     public static class License implements HasId {
