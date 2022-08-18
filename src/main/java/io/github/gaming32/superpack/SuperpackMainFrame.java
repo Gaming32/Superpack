@@ -17,10 +17,18 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.InterruptedIOException;
 import java.io.Reader;
+import java.io.UncheckedIOException;
 import java.net.URI;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
+import java.security.DigestInputStream;
+import java.security.MessageDigest;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -50,8 +58,6 @@ import javax.swing.Scrollable;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
-import javax.swing.border.EmptyBorder;
-import javax.swing.border.TitledBorder;
 import javax.swing.event.HyperlinkEvent;
 
 import org.slf4j.Logger;
@@ -73,9 +79,11 @@ import io.github.gaming32.superpack.labrinth.SearchResults;
 import io.github.gaming32.superpack.labrinth.Version;
 import io.github.gaming32.superpack.util.GeneralUtil;
 import io.github.gaming32.superpack.util.HasLogger;
+import io.github.gaming32.superpack.util.MultiMessageDigest;
 import io.github.gaming32.superpack.util.PlaceholderTextField;
 import io.github.gaming32.superpack.util.SimpleHttp;
 import io.github.gaming32.superpack.util.SoftCacheMap;
+import io.github.gaming32.superpack.util.TrackingInputStream;
 
 public final class SuperpackMainFrame extends JFrame implements HasLogger {
     private static final Logger LOGGER = LoggerFactory.getLogger(SuperpackMainFrame.class);
@@ -550,7 +558,7 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
 
                         final JLabel description = new JLabel("<html>" + project.getDescription() + "</html>", JLabel.CENTER);
                         description.setAlignmentX(JLabel.CENTER_ALIGNMENT);
-                        description.setBorder(new EmptyBorder(10, 10, 10, 10));
+                        description.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
                         mainPanel.add(description);
 
                         final JPanel actionPanel = new JPanel();
@@ -571,7 +579,7 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
                             } catch (Exception e) {
                                 final String message = "Failed to open " + project.getSlug() + " on Modrinth";
                                 LOGGER.error(message, e);
-                                JOptionPane.showMessageDialog(this, message, getTitle(), JOptionPane.ERROR_MESSAGE);
+                                GeneralUtil.onlyShowErrorMessage(this, message);
                             }
                         });
                         actionPanel.add(viewOnModrinth);
@@ -781,11 +789,146 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
 
                                 button.add(centerPanel);
                             }
-                            button.add(new JLabel("<html><b>" + version.getDownloads() + "</b> downloads</html>"));
-                            button.addActionListener(ev -> {
-                                LOGGER.info("Download version {}", version.getName());
-                            });
+                            final Version.File file = GeneralUtil.findFirst(
+                                Pipelines.iterator(version.getFiles()).filter(Version.File::isPrimary)
+                            ).orElse(null);
+                            {
+                                final JPanel rightPanel = new JPanel();
+                                rightPanel.setAlignmentX(JPanel.RIGHT_ALIGNMENT);
+                                rightPanel.setOpaque(false);
+                                rightPanel.setLayout(new BoxLayout(rightPanel, BoxLayout.Y_AXIS));
+
+                                rightPanel.add(new JLabel("<html><b>" + version.getDownloads() + "</b> downloads</html>"));
+                                rightPanel.add(new JLabel(
+                                    file != null
+                                        ? GeneralUtil.getHumanFileSize(file.getSize())
+                                        : "<html><b>No primary downloads</b></html>"
+                                ));
+
+                                button.add(rightPanel);
+                            }
                             add(button);
+                            if (file == null) {
+                                button.setEnabled(false);
+                                continue;
+                            }
+                            button.addActionListener(ev -> {
+                                final ProgressDialog progress = new ProgressDialog(
+                                    SuperpackMainFrame.this,
+                                    themeDetector,
+                                    "Download modpack",
+                                    "Downloading " + file.getFilename()
+                                );
+                                final File cacheFile = SuperpackMain.getCacheFilePath(file.getHashes().getSha1());
+                                final Runnable completed = () -> {
+                                    progress.setVisible(false);
+                                    try {
+                                        new InstallPackDialog(
+                                            SuperpackMainFrame.this,
+                                            cacheFile,
+                                            file.getUrl().toExternalForm(),
+                                            themeDetector
+                                        );
+                                    } catch (IOException e) {
+                                        GeneralUtil.showErrorMessage(this, e);
+                                    }
+                                };
+                                if (!cacheFile.exists() || cacheFile.length() != file.getSize()) {
+                                    final Thread downloadThread = new Thread(() -> {
+                                        try {
+                                            cacheFile.getParentFile().mkdirs();
+                                            final String downloadFileSize = GeneralUtil.getHumanFileSize(file.getSize());
+                                            final URL downloadUrl = file.getUrl();
+                                            progress.getLogger().info("Downloading {}", downloadUrl);
+                                            SwingUtilities.invokeLater(() -> {
+                                                progress.setMaximum(GeneralUtil.clampToInt(file.getSize()));
+                                                progress.setProgress(0);
+                                                progress.setString("Downloading file... 0 B / " + downloadFileSize);
+                                            });
+                                            final MultiMessageDigest digest = new MultiMessageDigest(
+                                                MessageDigest.getInstance("SHA-1"),
+                                                MessageDigest.getInstance("SHA-512")
+                                            );
+                                            long downloadSize;
+                                            try (InputStream is = new TrackingInputStream(
+                                                new DigestInputStream(downloadUrl.openStream(), digest),
+                                                read -> {
+                                                    if (progress.cancelled()) {
+                                                        final InterruptedIOException e = new InterruptedIOException();
+                                                        e.bytesTransferred = GeneralUtil.clampToInt(read);
+                                                        throw new UncheckedIOException(e);
+                                                    }
+                                                    SwingUtilities.invokeLater(() -> {
+                                                        progress.setProgress(GeneralUtil.clampToInt(read));
+                                                        progress.setString(
+                                                            "Downloading file... " +
+                                                            GeneralUtil.getHumanFileSize(read) +
+                                                            " / " + downloadFileSize
+                                                        );
+                                                    });
+                                                }
+                                            )) {
+                                                downloadSize = Files.copy(is, cacheFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                                            } catch (IOException e) {
+                                                if (e instanceof InterruptedIOException) {
+                                                    progress.getLogger().info("Download cancelled");
+                                                    JOptionPane.showMessageDialog(
+                                                        this, "Download cancelled", "Download cancelled", JOptionPane.INFORMATION_MESSAGE
+                                                    );
+                                                } else {
+                                                    progress.getLogger().error("Failed to download " + downloadUrl, e);
+                                                    GeneralUtil.onlyShowErrorMessage(progress, "Failed to download " + downloadUrl);
+                                                    progress.setVisible(false);
+                                                }
+                                                return;
+                                            }
+                                            progress.getLogger().info("Downloaded " + downloadSize + " bytes");
+                                            if (downloadSize != file.getSize()) {
+                                                GeneralUtil.showErrorMessage(
+                                                    progress,
+                                                    "File size doesn't match! Expected " + file.getSize() + " bytes"
+                                                );
+                                                progress.setVisible(false);
+                                                return;
+                                            }
+                                            byte[] hash1 = digest.getDigests()[0].digest();
+                                            byte[] hash2 = file.getHashes().getSha1();
+                                            if (!Arrays.equals(hash1, hash2)) {
+                                                progress.getLogger().error(
+                                                    "SHA-1 doesn't match! Expected {}, got {}",
+                                                    GeneralUtil.toHexString(hash2),
+                                                    GeneralUtil.toHexString(hash1)
+                                                );
+                                                GeneralUtil.onlyShowErrorMessage(progress, "SHA-1 hash doesn't match!");
+                                                progress.setVisible(false);
+                                                return;
+                                            }
+                                            hash1 = digest.getDigests()[1].digest();
+                                            hash2 = file.getHashes().getSha512();
+                                            if (!Arrays.equals(hash1, hash2)) {
+                                                progress.getLogger().error(
+                                                    "SHA-512 doesn't match! Expected {}, got {}",
+                                                    GeneralUtil.toHexString(hash2),
+                                                    GeneralUtil.toHexString(hash1)
+                                                );
+                                                GeneralUtil.onlyShowErrorMessage(progress, "SHA-512 hash doesn't match!");
+                                                progress.setVisible(false);
+                                                return;
+                                            }
+                                            SwingUtilities.invokeLater(completed);
+                                        } catch (Exception e) {
+                                            GeneralUtil.showErrorMessage(progress, e);
+                                            progress.setVisible(false);
+                                        }
+                                    }, "PackDownloader");
+                                    downloadThread.setDaemon(true);
+                                    downloadThread.start();
+                                    progress.setVisible(true);
+                                } else {
+                                    LOGGER.info("Using cached file {}", cacheFile);
+                                    completed.run();
+                                }
+                            });
                         }
                         resultsCount.setText(results.length + " version" + (results.length == 1 ? "" : "s"));
                         revalidate();
@@ -917,7 +1060,7 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
                         .addComponent(clearCache)
                     )
                 );
-                cacheSettings.setBorder(new TitledBorder("Cache settings"));
+                cacheSettings.setBorder(BorderFactory.createTitledBorder("Cache settings"));
                 add(cacheSettings);
             }
         }

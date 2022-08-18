@@ -100,6 +100,8 @@ public final class InstallPackDialog extends JDialog implements HasLogger {
         pack();
         selectedPack.setText(selectedFilename);
 
+        setPreferredSize(new Dimension(960, 540));
+        setSize(getPreferredSize());
         setVisible(true);
     }
 
@@ -128,7 +130,7 @@ public final class InstallPackDialog extends JDialog implements HasLogger {
     @Override
     public void pack() {
         super.pack();
-        setMinimumSize(new Dimension(getWidth(), getHeight() - installOutput.getHeight() + 20));
+        setMinimumSize(new Dimension(350, getHeight() - installOutput.getHeight() + 20));
     }
 
     private void createComponents() {
@@ -149,7 +151,12 @@ public final class InstallPackDialog extends JDialog implements HasLogger {
         side = new JComboBox<>(EnvSide.values());
         side.addActionListener(ev -> {
             populateOptionalCheckboxes();
+            final Dimension oldSize = getSize();
             pack();
+            final Dimension newSize = getMinimumSize();
+            oldSize.width = Math.max(oldSize.width, newSize.width);
+            oldSize.height = Math.max(oldSize.height, newSize.height);
+            setSize(oldSize);
         });
 
         optionalCheckboxPanel = new JPanel();
@@ -178,7 +185,6 @@ public final class InstallPackDialog extends JDialog implements HasLogger {
             ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED
         );
         outputScrollPane.getMinimumSize().height = 20;
-        outputScrollPane.setPreferredSize(new Dimension(200, 150));
 
         overallDownloadBar = new JProgressBar();
         overallDownloadBar.setStringPainted(true);
@@ -419,8 +425,8 @@ public final class InstallPackDialog extends JDialog implements HasLogger {
                     continue;
                 }
             }
-            File cacheFile = getCacheFile(file);
-            if (cacheFile.isFile() && Files.size(cacheFile.toPath()) == file.getFileSize()) {
+            File cacheFile = SuperpackMain.getCacheFilePath(file.getHashes().get("sha1"));
+            if (cacheFile.isFile() && cacheFile.length() == file.getFileSize()) {
                 println("   File found in cache at " + cacheFile);
                 Files.copy(cacheFile.toPath(), destPath.toPath(), StandardCopyOption.REPLACE_EXISTING);
                 continue;
@@ -455,16 +461,16 @@ public final class InstallPackDialog extends JDialog implements HasLogger {
                 }
                 byte[] hash1 = digest.getDigests()[0].digest();
                 byte[] hash2 = file.getHashes().get("sha1");
-                println("      SHA-1: " + toHexString(hash1));
+                println("      SHA-1: " + GeneralUtil.toHexString(hash1));
                 if (!Arrays.equals(hash1, hash2)) {
-                    println("         ERROR: SHA-1 doesn't match! Expected " + toHexString(hash2));
+                    println("         ERROR: SHA-1 doesn't match! Expected " + GeneralUtil.toHexString(hash2));
                     continue;
                 }
                 hash1 = digest.getDigests()[1].digest();
                 hash2 = file.getHashes().get("sha512");
-                println("      SHA-512: " + toHexString(hash1));
+                println("      SHA-512: " + GeneralUtil.toHexString(hash1));
                 if (!Arrays.equals(hash1, hash2)) {
-                    println("         ERROR: SHA-512 doesn't match! Expected " + toHexString(hash2));
+                    println("         ERROR: SHA-512 doesn't match! Expected " + GeneralUtil.toHexString(hash2));
                     continue;
                 }
                 totalDownloadSize += downloadSize;
@@ -553,24 +559,5 @@ public final class InstallPackDialog extends JDialog implements HasLogger {
             overallDownloadBar.setValue(overallDownloadBar.getMaximum());
             overallDownloadBar.setString("Extracting " + sideName + " overrides... Done!");
         });
-    }
-
-    private static File getCacheFile(PackFile file) {
-        String hash = toHexString(file.getHashes().get("sha1"));
-        String path =
-            hash.substring(0, 2) + '/' +
-            hash.substring(2, 4) + '/' +
-            hash.substring(4);
-        return new File(SuperpackMain.downloadCacheDir, path);
-    }
-
-    private static final char[] HEX_CHARS = "0123456789abcdef".toCharArray();
-    private static String toHexString(byte[] arr) {
-        StringBuilder result = new StringBuilder(arr.length << 1);
-        for (byte v : arr) {
-            result.append(HEX_CHARS[(v & 0xff) >> 4]);
-            result.append(HEX_CHARS[v & 0xf]);
-        }
-        return result.toString();
     }
 }

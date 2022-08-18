@@ -3,8 +3,14 @@ package io.github.gaming32.superpack.util;
 import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.util.function.LongConsumer;
 
+/**
+ * Calls {@code handler} with the current number of bytes read after each change.
+ * Any {@link java.io.UncheckedIOException}s thrown in the handler will be rethrown
+ * as {@link java.io.IOException}s.
+ */
 public class TrackingInputStream extends FilterInputStream {
     private final LongConsumer handler;
     private long read = 0;
@@ -32,7 +38,11 @@ public class TrackingInputStream extends FilterInputStream {
         int result = super.read();
         if (result != -1) {
             read++;
-            handler.accept(read);
+            try {
+                handler.accept(read);
+            } catch (UncheckedIOException e) {
+                throw e.getCause();
+            }
         }
         return result;
     };
@@ -42,7 +52,11 @@ public class TrackingInputStream extends FilterInputStream {
         len = in.read(b, off, len);
         if (len != 0) {
             read += len;
-            handler.accept(read);
+            try {
+                handler.accept(read);
+            } catch (UncheckedIOException e) {
+                throw e.getCause();
+            }
         }
         return len;
     };
@@ -52,7 +66,11 @@ public class TrackingInputStream extends FilterInputStream {
         n = in.skip(n);
         if (n != 0) {
             read += n;
-            handler.accept(read);
+            try {
+                handler.accept(read);
+            } catch (UncheckedIOException e) {
+                throw e.getCause();
+            }
         }
         return n;
     };
@@ -68,7 +86,11 @@ public class TrackingInputStream extends FilterInputStream {
         super.reset();
         if (read != mark) {
             read = mark;
-            handler.accept(read);
+            try {
+                handler.accept(read);
+            } catch (UncheckedIOException e) {
+                throw e.getCause();
+            }
         }
     }
 }

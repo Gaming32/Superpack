@@ -18,6 +18,8 @@ import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.text.DecimalFormat;
+import java.util.Iterator;
+import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.stream.LongStream;
 
@@ -36,6 +38,7 @@ public final class GeneralUtil {
         "B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"
     };
     private static final DecimalFormat SIZE_FORMAT = new DecimalFormat("#,###.##");
+    private static final char[] HEX_CHARS = "0123456789abcdef".toCharArray();
     private static final URL GITHUB_MARKDOWN_URL;
 
     static {
@@ -65,6 +68,15 @@ public final class GeneralUtil {
 
     public static <T extends Component & HasLogger> void showErrorMessage(T owner, String message, String title) {
         owner.getLogger().error(message);
+        JOptionPane.showMessageDialog(owner, message, title, JOptionPane.ERROR_MESSAGE);
+    }
+
+    public static void onlyShowErrorMessage(Component owner, String message) {
+        final Frame ownerFrame = (Frame)SwingUtilities.getAncestorOfClass(Frame.class, owner);
+        onlyShowErrorMessage(owner, message, ownerFrame != null ? ownerFrame.getTitle() : SuperpackMain.APP_NAME);
+    }
+
+    public static void onlyShowErrorMessage(Component owner, String message, String title) {
         JOptionPane.showMessageDialog(owner, message, title, JOptionPane.ERROR_MESSAGE);
     }
 
@@ -171,5 +183,22 @@ public final class GeneralUtil {
     public static String capitalize(String s) {
         if (s.isEmpty()) return s;
         return Character.toUpperCase(s.charAt(0)) + s.substring(1);
+    }
+
+    public static String toHexString(byte[] arr) {
+        StringBuilder result = new StringBuilder(arr.length << 1);
+        for (byte v : arr) {
+            result.append(HEX_CHARS[(v & 0xff) >> 4]);
+            result.append(HEX_CHARS[v & 0xf]);
+        }
+        return result.toString();
+    }
+
+    public static <T> Optional<T> findFirst(Iterable<T> iterable) {
+        return findFirst(iterable.iterator());
+    }
+
+    public static <T> Optional<T> findFirst(Iterator<T> iterator) {
+        return Optional.ofNullable(iterator.hasNext() ? iterator.next() : null);
     }
 }
