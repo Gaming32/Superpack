@@ -832,7 +832,7 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
                             }
                             final Version.File file = GeneralUtil.findFirst(
                                 Pipelines.iterator(version.getFiles()).filter(Version.File::isPrimary)
-                            ).orElse(null);
+                            ).orElse(version.getFiles()[0]);
                             {
                                 final JPanel rightPanel = new JPanel();
                                 rightPanel.setAlignmentX(JPanel.RIGHT_ALIGNMENT);
@@ -840,19 +840,11 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
                                 rightPanel.setLayout(new BoxLayout(rightPanel, BoxLayout.Y_AXIS));
 
                                 rightPanel.add(new JLabel("<html><b>" + version.getDownloads() + "</b> downloads</html>"));
-                                rightPanel.add(new JLabel(
-                                    file != null
-                                        ? GeneralUtil.getHumanFileSize(file.getSize())
-                                        : "<html><b>No primary downloads</b></html>"
-                                ));
+                                rightPanel.add(new JLabel(GeneralUtil.getHumanFileSize(file.getSize())));
 
                                 button.add(rightPanel);
                             }
                             add(button);
-                            if (file == null) {
-                                button.setEnabled(false);
-                                continue;
-                            }
                             button.addActionListener(ev -> {
                                 final ProgressDialog progress = new ProgressDialog(
                                     SuperpackMainFrame.this,
