@@ -3,6 +3,8 @@ package io.github.gaming32.superpack.labrinth;
 import java.net.URL;
 import java.util.Date;
 
+import com.google.gson.annotations.SerializedName;
+
 import io.github.gaming32.mrpacklib.Mrpack.EnvCompatibility;
 import lombok.Data;
 
@@ -10,7 +12,7 @@ import lombok.Data;
 public class Project implements BaseProject {
     private ModrinthId id;
     private String slug;
-    private String projectType;
+    private ProjectType projectType;
     private ModrinthId team;
     private String title;
     private String description;
@@ -19,7 +21,7 @@ public class Project implements BaseProject {
     private Date published;
     private Date updated;
     private Date approved;
-    private String status;
+    private Status status;
     private ModeratorMessage moderatorMessage;
     private License license;
     private EnvCompatibility clientSide;
@@ -36,6 +38,16 @@ public class Project implements BaseProject {
     private URL discordUrl;
     private DonationUrl[] donationUrls;
     private GalleryImage[] gallery;
+
+    public static enum Status {
+        @SerializedName("approved") APPROVED,
+        @SerializedName("rejected") REJECTED,
+        @SerializedName("draft") DRAFT,
+        @SerializedName("unlisted") UNLISTED,
+        @SerializedName("archived") ARCHIVED,
+        @SerializedName("processing") PROCESSING,
+        @SerializedName("unknown") UNKNOWN
+    }
 
     @Data
     public static class ModeratorMessage {

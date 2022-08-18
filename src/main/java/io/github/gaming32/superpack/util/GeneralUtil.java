@@ -184,7 +184,7 @@ public final class GeneralUtil {
 
     public static String capitalize(String s) {
         if (s.isEmpty()) return s;
-        return Character.toUpperCase(s.charAt(0)) + s.substring(1);
+        return Character.toUpperCase(s.charAt(0)) + s.substring(1).toLowerCase();
     }
 
     public static String toHexString(byte[] arr) {

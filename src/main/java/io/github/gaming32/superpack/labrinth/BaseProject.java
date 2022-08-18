@@ -2,13 +2,20 @@ package io.github.gaming32.superpack.labrinth;
 
 import java.net.URL;
 
+import com.google.gson.annotations.SerializedName;
+
 import io.github.gaming32.mrpacklib.Mrpack.EnvCompatibility;
 
 public interface BaseProject extends HasId {
+    enum ProjectType {
+        @SerializedName("mod") MOD,
+        @SerializedName("modpack") MODPACK
+    }
+
     String getSlug();
     void setSlug(String slug);
-    String getProjectType();
-    void setProjectType(String projectType);
+    ProjectType getProjectType();
+    void setProjectType(ProjectType projectType);
     String getTitle();
     void setTitle(String title);
     String getDescription();

@@ -18,7 +18,7 @@ public class SearchResults {
     @Data
     public static class Result implements BaseProject {
         private ModrinthId projectId;
-        private String projectType;
+        private ProjectType projectType;
         private String slug;
         private String author;
         private String title;

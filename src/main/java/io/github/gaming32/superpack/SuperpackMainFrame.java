@@ -792,18 +792,18 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
 
                                 final StringBuilder info = new StringBuilder("<html><span");
                                 switch (version.getVersionType()) {
-                                    case "release":
+                                    case RELEASE:
                                         info.append(" style=\"color: #00aa00;\"");
                                         break;
-                                    case "beta":
+                                    case BETA:
                                         info.append(" style=\"color: #aaaa00;\"");
                                         break;
-                                    case "alpha":
+                                    case ALPHA:
                                         info.append(" style=\"color: #aa0000;\"");
                                         break;
                                 }
                                 info.append(">&#9679; ")
-                                    .append(GeneralUtil.capitalize(version.getVersionType()))
+                                    .append(version.getVersionType())
                                     .append("</span> &bull; ")
                                     .append(version.getVersionNumber())
                                     .append("</html>");
