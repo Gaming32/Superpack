@@ -167,4 +167,9 @@ public final class GeneralUtil {
         }
         return result.toString();
     }
+
+    public static String capitalize(String s) {
+        if (s.isEmpty()) return s;
+        return Character.toUpperCase(s.charAt(0)) + s.substring(1);
+    }
 }

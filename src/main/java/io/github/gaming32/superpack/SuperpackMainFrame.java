@@ -10,6 +10,7 @@ import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
+import java.awt.GridLayout;
 import java.awt.Image;
 import java.awt.Rectangle;
 import java.io.File;
@@ -25,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ForkJoinPool;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import javax.imageio.ImageIO;
 import javax.swing.BorderFactory;
@@ -33,6 +35,7 @@ import javax.swing.GroupLayout;
 import javax.swing.GroupLayout.Alignment;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JEditorPane;
 import javax.swing.JFrame;
@@ -59,6 +62,7 @@ import com.formdev.flatlaf.FlatLightLaf;
 import com.jthemedetecor.OsThemeDetector;
 
 import io.github.gaming32.mrpacklib.Mrpack.EnvCompatibility;
+import io.github.gaming32.pipeline.Pipelines;
 import io.github.gaming32.superpack.jxtabbedpane.AbstractTabRenderer;
 import io.github.gaming32.superpack.jxtabbedpane.JXTabbedPane;
 import io.github.gaming32.superpack.labrinth.BaseProject;
@@ -66,6 +70,7 @@ import io.github.gaming32.superpack.labrinth.LabrinthGson;
 import io.github.gaming32.superpack.labrinth.ModrinthId;
 import io.github.gaming32.superpack.labrinth.Project;
 import io.github.gaming32.superpack.labrinth.SearchResults;
+import io.github.gaming32.superpack.labrinth.Version;
 import io.github.gaming32.superpack.util.GeneralUtil;
 import io.github.gaming32.superpack.util.HasLogger;
 import io.github.gaming32.superpack.util.PlaceholderTextField;
@@ -154,20 +159,28 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
         themeDetector.removeListener(themeListener);
     }
 
+    private interface HasCachedScrollValue {
+        int getCachedScrollValue();
+        void setCachedScrollValue(int value);
+    }
+
     private final class ModrinthPanel extends JPanel implements HasLogger, Scrollable {
         static final int THUMBNAIL_SIZE = 64;
+        static final int PER_PAGE = 50;
 
         final ImageIcon placeholderIcon;
         final SoftCacheMap<String, Image> imageCache = new SoftCacheMap<>();
 
         final MainList mainList;
         final ModpackInformationPanel modpackInformationPanel;
+        final VersionsList versionsList;
 
         ModrinthPanel() {
             placeholderIcon = new ImageIcon(getClass().getResource("/placeholder.png"));
 
             mainList = new MainList();
             modpackInformationPanel = new ModpackInformationPanel();
+            versionsList = new VersionsList();
 
             setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
 
@@ -221,9 +234,30 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
             });
         }
 
-        private final class MainList extends JPanel implements HasLogger {
-            static final int PER_PAGE = 50;
+        JLabel createLoadingLabel() {
+            final JLabel loading = new JLabel("Loading...");
+            loading.setForeground(new Color(0x2a2c2e));
+            loading.setFont(loading.getFont().deriveFont(48f));
+            return loading;
+        }
 
+        <T extends Component & HasCachedScrollValue> JButton createBackButton(String label, Component from, T to) {
+            final JButton backButton = new JButton(label);
+            backButton.addActionListener(ev -> {
+                ModrinthPanel.this.remove(from);
+                ModrinthPanel.this.add(to);
+                SwingUtilities.invokeLater(() -> { // Wait until after the GUI refreshes
+                    final JScrollPane scrollPane = (JScrollPane)SwingUtilities.getAncestorOfClass(JScrollPane.class, to);
+                    if (scrollPane != null) {
+                        scrollPane.getVerticalScrollBar().setValue(to.getCachedScrollValue());
+                    }
+                    to.setCachedScrollValue(0);
+                });
+            });
+            return backButton;
+        }
+
+        private final class MainList extends JPanel implements HasLogger, HasCachedScrollValue {
             final JLabel resultsCount;
             final JComboBox<String> pageSelector;
 
@@ -232,11 +266,7 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
             int cachedScrollValue;
 
             MainList() {
-                super();
-
-                final JLabel loading = new JLabel("Loading...");
-                loading.setForeground(new Color(0x2a2c2e));
-                loading.setFont(loading.getFont().deriveFont(48f));
+                final JLabel loading = createLoadingLabel();
 
                 final JPanel topPanel;
                 {
@@ -307,6 +337,16 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
             @Override
             public Logger getLogger() {
                 return LOGGER;
+            }
+
+            @Override
+            public int getCachedScrollValue() {
+                return cachedScrollValue;
+            }
+
+            @Override
+            public void setCachedScrollValue(int value) {
+                this.cachedScrollValue = value;
             }
 
             void loadElements(
@@ -406,35 +446,24 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
             }
         }
 
-        private final class ModpackInformationPanel extends JPanel implements HasLogger {
+        private final class ModpackInformationPanel extends JPanel implements HasLogger, HasCachedScrollValue {
             final JPanel mainPanel;
             final JLabel loading;
 
             Thread loadingThread;
+            int cachedScrollValue = 0;
 
             ModpackInformationPanel() {
-                final JButton backButton = new JButton("< Back to Search");
-                backButton.addActionListener(ev -> {
-                    ModrinthPanel.this.remove(this);
-                    ModrinthPanel.this.add(mainList);
-                    SwingUtilities.invokeLater(() -> { // Wait until after the GUI refreshes
-                        final JScrollPane scrollPane = (JScrollPane)SwingUtilities.getAncestorOfClass(JScrollPane.class, mainList);
-                        if (scrollPane != null) {
-                            scrollPane.getVerticalScrollBar().setValue(mainList.cachedScrollValue);
-                        }
-                        mainList.cachedScrollValue = 0;
-                    });
-                });
+                final JButton backButton = createBackButton("< Back to Search", this, mainList);
 
                 final JPanel backPanel = new JPanel();
                 backPanel.setLayout(new FlowLayout(FlowLayout.LEFT));
                 backPanel.setOpaque(false);
                 backPanel.add(backButton);
 
-                loading = new JLabel("Loading...", JLabel.CENTER);
+                loading = createLoadingLabel();
+                loading.setHorizontalAlignment(JLabel.CENTER);
                 loading.setAlignmentX(JLabel.CENTER_ALIGNMENT);
-                loading.setForeground(new Color(0x2a2c2e));
-                loading.setFont(loading.getFont().deriveFont(48f));
 
                 mainPanel = new JPanel();
                 mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
@@ -448,6 +477,16 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
             @Override
             public Logger getLogger() {
                 return LOGGER;
+            }
+
+            @Override
+            public int getCachedScrollValue() {
+                return cachedScrollValue;
+            }
+
+            @Override
+            public void setCachedScrollValue(int value) {
+                this.cachedScrollValue = value;
             }
 
             @Override
@@ -519,6 +558,9 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
                         final JButton download = new JButton("Download");
                         download.addActionListener(ev -> {
                             LOGGER.info("Download {}", project.getTitle());
+                            versionsList.loadProject(projectId);
+                            ModrinthPanel.this.remove(this);
+                            ModrinthPanel.this.add(versionsList);
                         });
                         actionPanel.add(download);
 
@@ -543,9 +585,6 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
                         );
                         bodyPanel.setLayout(new BorderLayout());
 
-                        // final JLabel body = new JLabel("Loading body...");
-                        // final JTextPane body = new JTextPane();
-                        // body.setContentType("text/html");
                         final JEditorPane body = new JEditorPane();
                         body.setEditorKit(JEditorPane.createEditorKitForContentType("text/html"));
                         body.addHyperlinkListener(ev -> {
@@ -592,6 +631,163 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
                         mainPanel.repaint();
                     });
                 }, "ModrinthProjectThread");
+                loadingThread.setDaemon(true);
+                loadingThread.start();
+            }
+        }
+
+        private final class VersionsList extends JPanel implements HasLogger {
+            final JLabel loading;
+            final JPanel topPanel;
+            final JLabel resultsCount;
+            final JCheckBox featuredOnly;
+
+            ModrinthId projectId;
+            Thread loadingThread;
+
+            VersionsList() {
+                loading = createLoadingLabel();
+
+                topPanel = new JPanel();
+                topPanel.setLayout(new BorderLayout());
+
+                {
+                    final JButton backButtonHome = createBackButton("< Back to Search", this, mainList);
+
+                    final JButton backButtonPack = createBackButton("Back to Pack", this, modpackInformationPanel);
+
+                    final JPanel topPanelLeft = new JPanel();
+                    topPanelLeft.setLayout(new FlowLayout(FlowLayout.LEFT));
+                    topPanelLeft.add(backButtonHome);
+                    topPanelLeft.add(backButtonPack);
+                    topPanel.add(topPanelLeft, BorderLayout.WEST);
+                }
+
+                {
+                    resultsCount = new JLabel();
+
+                    featuredOnly = new JCheckBox("Featured only");
+                    featuredOnly.addActionListener(ev -> loadElements(results -> {
+                        for (final Component component : getComponents()) {
+                            if (component != topPanel) {
+                                remove(component);
+                            }
+                        }
+                    }));
+
+                    final JPanel topPanelRight = new JPanel();
+                    topPanelRight.setLayout(new FlowLayout(FlowLayout.RIGHT));
+                    topPanelRight.add(resultsCount);
+                    topPanelRight.add(featuredOnly);
+                    topPanel.add(topPanelRight, BorderLayout.EAST);
+                }
+
+                setLayout(new GridBagLayout() {{
+                    defaultConstraints.fill = GridBagConstraints.HORIZONTAL;
+                    defaultConstraints.weightx = 1;
+                    defaultConstraints.gridx = 0;
+                }});
+            }
+
+            @Override
+            public Logger getLogger() {
+                return LOGGER;
+            }
+
+            void loadProject(ModrinthId projectId) {
+                removeAll();
+                add(loading, new GridBagConstraints()); // Overrides default constraints
+                this.projectId = projectId;
+                loadElements(results -> {
+                    remove(loading);
+                    add(topPanel);
+                });
+            }
+
+            void loadElements(Consumer<Version[]> onPreComplete) {
+                if (loadingThread != null) {
+                    while (loadingThread.isAlive()) {
+                        Thread.onSpinWait(); // Definitely don't Thread.sleep, because this is probably the AWT event thread
+                    }
+                }
+                loadingThread = new Thread(() -> {
+                    final Version[] results;
+                    final Map<String, Object> query = new HashMap<>();
+                    if (featuredOnly.isSelected()) {
+                        query.put("featured", true);
+                    }
+                    try (
+                        InputStream is = SimpleHttp.createUrl(MODRINTH_API_ROOT, "/project/" + projectId + "/version", query).openStream();
+                        Reader reader = new InputStreamReader(is, StandardCharsets.UTF_8);
+                    ) {
+                        results = LabrinthGson.GSON.fromJson(reader, Version[].class);
+                    } catch (Exception e) {
+                        getLogger().error("Error requesting versions", e);
+                        return;
+                    }
+                    SwingUtilities.invokeLater(() -> {
+                        onPreComplete.accept(results);
+                        for (final Version version : results) {
+                            final JButton button = new JButton();
+                            button.setLayout(new GridLayout(1, 3));
+                            {
+                                final JPanel leftPanel = new JPanel();
+                                leftPanel.setAlignmentX(JPanel.LEFT_ALIGNMENT);
+                                leftPanel.setOpaque(false);
+                                leftPanel.setLayout(new BoxLayout(leftPanel, BoxLayout.Y_AXIS));
+
+                                final JLabel name = new JLabel(version.getName());
+                                name.setFont(name.getFont().deriveFont(Font.BOLD));
+                                leftPanel.add(name);
+
+                                final StringBuilder info = new StringBuilder("<html><span");
+                                switch (version.getVersionType()) {
+                                    case "release":
+                                        info.append(" style=\"color: #00aa00;\"");
+                                        break;
+                                    case "beta":
+                                        info.append(" style=\"color: #aaaa00;\"");
+                                        break;
+                                    case "alpha":
+                                        info.append(" style=\"color: #aa0000;\"");
+                                        break;
+                                }
+                                info.append(">&#9679; ")
+                                    .append(GeneralUtil.capitalize(version.getVersionType()))
+                                    .append("</span> &bull; ")
+                                    .append(version.getVersionNumber())
+                                    .append("</html>");
+                                final JLabel statusAndVersion = new JLabel(info.toString());
+                                leftPanel.add(statusAndVersion);
+
+                                button.add(leftPanel);
+                            }
+                            {
+                                final JPanel centerPanel = new JPanel();
+                                centerPanel.setAlignmentX(JPanel.CENTER_ALIGNMENT);
+                                centerPanel.setOpaque(false);
+                                centerPanel.setLayout(new BoxLayout(centerPanel, BoxLayout.Y_AXIS));
+
+                                final JLabel loaders = new JLabel(
+                                    Pipelines.iterator(version.getLoaders())
+                                        .map(GeneralUtil::capitalize)
+                                        .collect(Collectors.joining(", "))
+                                );
+                                centerPanel.add(loaders);
+
+                                final JLabel gameVersions = new JLabel(String.join(", ", version.getGameVersions()));
+                                centerPanel.add(gameVersions);
+
+                                button.add(centerPanel);
+                            }
+                            button.add(new JLabel("<html><b>" + version.getDownloads() + "</b> downloads</html>"));
+                            add(button);
+                        }
+                        resultsCount.setText(results.length + " version" + (results.length == 1 ? "" : "s"));
+                        revalidate();
+                        repaint();
+                    });
+                }, "ModrinthVersionsThread");
                 loadingThread.setDaemon(true);
                 loadingThread.start();
             }

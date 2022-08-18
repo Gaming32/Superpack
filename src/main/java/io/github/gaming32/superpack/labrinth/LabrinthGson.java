@@ -7,6 +7,7 @@ import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.TypeAdapter;
 import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
 
 import io.github.gaming32.mrpacklib.util.GsonHelper;
@@ -20,8 +21,12 @@ public final class LabrinthGson {
 
         @Override
         public URL read(JsonReader in) throws IOException {
+            if (in.peek() == JsonToken.NULL) {
+                in.nextNull();
+                return null;
+            }
             final String value = in.nextString();
-            if (value == null || value.isEmpty()) return null;
+            if (value.isEmpty()) return null;
             return new URL(value);
         }
     }
@@ -37,8 +42,11 @@ public final class LabrinthGson {
 
             @Override
             public ModrinthId read(JsonReader in) throws IOException {
-                final String id = in.nextString();
-                return id != null ? new ModrinthId(id) : null;
+                if (in.peek() == JsonToken.NULL) {
+                    in.nextNull();
+                    return null;
+                }
+                return new ModrinthId(in.nextString());
             }
         })
         .create();
