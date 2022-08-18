@@ -102,11 +102,14 @@ public final class InstallPackDialog extends JDialog implements HasLogger {
 
         setPreferredSize(new Dimension(960, 540));
         setSize(getPreferredSize());
-        setVisible(true);
     }
 
     public InstallPackDialog(SuperpackMainFrame parent, File packFile, OsThemeDetector themeDetector) throws IOException {
         this(parent, packFile, packFile.getAbsolutePath(), themeDetector);
+    }
+
+    public void setDefaultSide(EnvSide side) {
+        this.side.setSelectedItem(side);
     }
 
     @Override

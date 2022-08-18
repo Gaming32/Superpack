@@ -68,6 +68,7 @@ import com.formdev.flatlaf.FlatLightLaf;
 import com.jthemedetecor.OsThemeDetector;
 
 import io.github.gaming32.mrpacklib.Mrpack.EnvCompatibility;
+import io.github.gaming32.mrpacklib.Mrpack.EnvSide;
 import io.github.gaming32.pipeline.Pipelines;
 import io.github.gaming32.superpack.jxtabbedpane.AbstractTabRenderer;
 import io.github.gaming32.superpack.jxtabbedpane.JXTabbedPane;
@@ -544,10 +545,15 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
                         mainPanel.add(nameAndIcon);
 
                         JLabel sideNote = null;
+                        final EnvSide defaultSide;
                         if (project.getClientSide() == EnvCompatibility.UNSUPPORTED) {
+                            defaultSide = EnvSide.SERVER;
                             sideNote = new JLabel("Server pack");
                         } else if (project.getServerSide() == EnvCompatibility.UNSUPPORTED) {
+                            defaultSide = EnvSide.CLIENT;
                             sideNote = new JLabel("Client pack");
+                        } else {
+                            defaultSide = null;
                         }
                         if (sideNote != null) {
                             sideNote.setHorizontalAlignment(JLabel.CENTER);
@@ -566,7 +572,7 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
                         final JButton download = new JButton("Download");
                         download.addActionListener(ev -> {
                             LOGGER.info("Download {}", project.getTitle());
-                            versionsList.loadProject(projectId);
+                            versionsList.loadProject(projectId, defaultSide);
                             ModrinthPanel.this.remove(this);
                             ModrinthPanel.this.add(versionsList);
                         });
@@ -651,6 +657,7 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
             final JCheckBox featuredOnly;
 
             ModrinthId projectId;
+            EnvSide defaultSide;
             Thread loadingThread;
 
             VersionsList() {
@@ -702,10 +709,11 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
                 return LOGGER;
             }
 
-            void loadProject(ModrinthId projectId) {
+            void loadProject(ModrinthId projectId, EnvSide defaultSide) {
                 removeAll();
                 add(loading, new GridBagConstraints()); // Overrides default constraints
                 this.projectId = projectId;
+                this.defaultSide = defaultSide;
                 loadElements(results -> {
                     remove(loading);
                     add(topPanel);
@@ -823,12 +831,16 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
                                 final Runnable completed = () -> {
                                     progress.setVisible(false);
                                     try {
-                                        new InstallPackDialog(
+                                        final InstallPackDialog dialog = new InstallPackDialog(
                                             SuperpackMainFrame.this,
                                             cacheFile,
                                             file.getUrl().toExternalForm(),
                                             themeDetector
                                         );
+                                        if (defaultSide != null) {
+                                            dialog.setDefaultSide(defaultSide);
+                                        }
+                                        dialog.setVisible(true);
                                     } catch (IOException e) {
                                         GeneralUtil.showErrorMessage(this, e);
                                     }
@@ -968,7 +980,7 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
                     return;
                 }
                 try {
-                    new InstallPackDialog(SuperpackMainFrame.this, packFile, themeDetector);
+                    new InstallPackDialog(SuperpackMainFrame.this, packFile, themeDetector).setVisible(true);
                 } catch (IOException e) {
                     GeneralUtil.showErrorMessage(this, e);
                 }
