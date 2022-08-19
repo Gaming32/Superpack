@@ -428,7 +428,7 @@ public final class InstallPackDialog extends JDialog implements HasLogger {
                     continue;
                 }
             }
-            File cacheFile = SuperpackMain.getCacheFilePath(file.getHashes().get("sha1"));
+            File cacheFile = Superpack.getCacheFilePath(file.getHashes().get("sha1"));
             if (cacheFile.isFile() && cacheFile.length() == file.getFileSize()) {
                 println("   File found in cache at " + cacheFile);
                 Files.copy(cacheFile.toPath(), destPath.toPath(), StandardCopyOption.REPLACE_EXISTING);

@@ -33,7 +33,7 @@ import javax.swing.event.DocumentListener;
 
 import com.google.gson.stream.JsonWriter;
 
-import io.github.gaming32.superpack.SuperpackMain;
+import io.github.gaming32.superpack.Superpack;
 
 public final class GeneralUtil {
     private static final String[] SIZE_UNITS = {
@@ -65,7 +65,7 @@ public final class GeneralUtil {
 
     public static <T extends Component & HasLogger> void showErrorMessage(T owner, String message) {
         final Frame ownerFrame = (Frame)SwingUtilities.getAncestorOfClass(Frame.class, owner);
-        showErrorMessage(owner, message, ownerFrame != null ? ownerFrame.getTitle() : SuperpackMain.APP_NAME);
+        showErrorMessage(owner, message, ownerFrame != null ? ownerFrame.getTitle() : Superpack.APP_NAME);
     }
 
     public static <T extends Component & HasLogger> void showErrorMessage(T owner, String message, String title) {
@@ -75,7 +75,7 @@ public final class GeneralUtil {
 
     public static void onlyShowErrorMessage(Component owner, String message) {
         final Frame ownerFrame = (Frame)SwingUtilities.getAncestorOfClass(Frame.class, owner);
-        onlyShowErrorMessage(owner, message, ownerFrame != null ? ownerFrame.getTitle() : SuperpackMain.APP_NAME);
+        onlyShowErrorMessage(owner, message, ownerFrame != null ? ownerFrame.getTitle() : Superpack.APP_NAME);
     }
 
     public static void onlyShowErrorMessage(Component owner, String message, String title) {

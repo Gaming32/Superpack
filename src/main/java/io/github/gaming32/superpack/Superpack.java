@@ -11,18 +11,15 @@ import com.jthemedetecor.OsThemeDetector;
 
 import io.github.gaming32.superpack.util.GeneralUtil;
 
-public class SuperpackMain {
+public class Superpack {
     public static final String APP_NAME = "Superpack";
+    public static final String MODRINTH_API_ROOT = "https://api.modrinth.com/v2/";
 
-    static File dataDir;
-    static File cacheDir;
-    static File downloadCacheDir;
+    public static final File dataDir = getDataDir();
+    public static final File cacheDir = new File(dataDir, "cache");
+    public static final File downloadCacheDir = new File(cacheDir, "downloadCache");
 
     public static void main(String[] args) {
-        dataDir = getDataDir();
-        cacheDir = new File(dataDir, "cache");
-        downloadCacheDir = new File(cacheDir, "downloadCache");
-
         final OsThemeDetector themeDetector = OsThemeDetector.getDetector();
         if (themeDetector.isDark()) {
             FlatDarkLaf.setup();
