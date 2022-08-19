@@ -26,7 +26,7 @@ public class Superpack {
         } else {
             FlatLightLaf.setup();
         }
-        SwingUtilities.invokeLater(() -> new SuperpackMainFrame(themeDetector));
+        SwingUtilities.invokeLater(() -> new SuperpackMainFrame(themeDetector).setVisible(true));
     }
 
     private static File getDataDir() {

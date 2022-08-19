@@ -15,7 +15,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.github.gaming32.superpack.FileDialogs;
-import io.github.gaming32.superpack.InstallPackDialog;
 import io.github.gaming32.superpack.SuperpackMainFrame;
 import io.github.gaming32.superpack.util.GeneralUtil;
 import io.github.gaming32.superpack.util.HasLogger;
@@ -54,7 +53,7 @@ public final class ImportTab extends JPanel implements HasLogger {
                 return;
             }
             try {
-                new InstallPackDialog(parent, packFile, parent.themeDetector).setVisible(true);
+                parent.openInstallPack(new InstallPackTab(parent, packFile));
             } catch (IOException e) {
                 GeneralUtil.showErrorMessage(this, e);
             }

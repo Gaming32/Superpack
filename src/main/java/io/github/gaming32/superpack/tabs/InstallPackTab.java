@@ -1,7 +1,6 @@
-package io.github.gaming32.superpack;
+package io.github.gaming32.superpack.tabs;
 
 import java.awt.Component;
-import java.awt.Dimension;
 import java.awt.Font;
 import java.io.File;
 import java.io.FileInputStream;
@@ -18,7 +17,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Consumer;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
@@ -28,7 +26,6 @@ import javax.swing.GroupLayout.Alignment;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
-import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -43,14 +40,13 @@ import javax.swing.SwingUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.formdev.flatlaf.FlatDarkLaf;
-import com.formdev.flatlaf.FlatLightLaf;
-import com.jthemedetecor.OsThemeDetector;
-
 import io.github.gaming32.mrpacklib.Mrpack;
 import io.github.gaming32.mrpacklib.Mrpack.EnvCompatibility;
 import io.github.gaming32.mrpacklib.Mrpack.EnvSide;
 import io.github.gaming32.mrpacklib.packindex.PackFile;
+import io.github.gaming32.superpack.FileDialogs;
+import io.github.gaming32.superpack.Superpack;
+import io.github.gaming32.superpack.SuperpackMainFrame;
 import io.github.gaming32.superpack.util.DisplayErrorMessageMarker;
 import io.github.gaming32.superpack.util.GeneralUtil;
 import io.github.gaming32.superpack.util.HasLogger;
@@ -58,18 +54,9 @@ import io.github.gaming32.superpack.util.MultiMessageDigest;
 import io.github.gaming32.superpack.util.NonWrappingTextPane;
 import io.github.gaming32.superpack.util.TrackingInputStream;
 
-public final class InstallPackDialog extends JDialog implements HasLogger {
-    private static final Logger LOGGER = LoggerFactory.getLogger(InstallPackDialog.class);
+public final class InstallPackTab extends JPanel implements HasLogger, AutoCloseable {
+    private static final Logger LOGGER = LoggerFactory.getLogger(InstallPackTab.class);
 
-    private final Consumer<Boolean> themeListener = isDark -> SwingUtilities.invokeLater(() -> {
-        if (isDark) {
-            FlatDarkLaf.setup();
-        } else {
-            FlatLightLaf.setup();
-        }
-        SwingUtilities.updateComponentTreeUI(this);
-    });
-    private final OsThemeDetector themeDetector;
     private final File packFile;
     private final ZipFile packZip;
     private final Mrpack pack;
@@ -87,25 +74,18 @@ public final class InstallPackDialog extends JDialog implements HasLogger {
     private JProgressBar overallDownloadBar;
     private JProgressBar singleDownloadBar;
 
-    public InstallPackDialog(SuperpackMainFrame parent, File packFile, String selectedFilename, OsThemeDetector themeDetector) throws IOException {
-        super(parent, "Install Pack", ModalityType.APPLICATION_MODAL);
-        this.themeDetector = themeDetector;
+    public InstallPackTab(SuperpackMainFrame parent, File packFile, String selectedFilename) throws IOException {
+        super();
         this.packFile = packFile;
         pack = new Mrpack(packZip = new ZipFile(packFile));
-        themeDetector.registerListener(themeListener);
 
-        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         createComponents();
 
-        pack();
         selectedPack.setText(selectedFilename);
-
-        setPreferredSize(new Dimension(960, 540));
-        setSize(getPreferredSize());
     }
 
-    public InstallPackDialog(SuperpackMainFrame parent, File packFile, OsThemeDetector themeDetector) throws IOException {
-        this(parent, packFile, packFile.getAbsolutePath(), themeDetector);
+    public InstallPackTab(SuperpackMainFrame parent, File packFile) throws IOException {
+        this(parent, packFile, packFile.getAbsolutePath());
     }
 
     public void setDefaultSide(EnvSide side) {
@@ -118,9 +98,7 @@ public final class InstallPackDialog extends JDialog implements HasLogger {
     }
 
     @Override
-    public void dispose() {
-        super.dispose();
-        themeDetector.removeListener(themeListener);
+    public void close() {
         if (pack != null) { // It's null if initialization failed
             try {
                 pack.close();
@@ -128,12 +106,6 @@ public final class InstallPackDialog extends JDialog implements HasLogger {
                 GeneralUtil.showErrorMessage(this, e);
             }
         }
-    }
-
-    @Override
-    public void pack() {
-        super.pack();
-        setMinimumSize(new Dimension(350, getHeight() - installOutput.getHeight() + 20));
     }
 
     private void createComponents() {
@@ -154,12 +126,8 @@ public final class InstallPackDialog extends JDialog implements HasLogger {
         side = new JComboBox<>(EnvSide.values());
         side.addActionListener(ev -> {
             populateOptionalCheckboxes();
-            final Dimension oldSize = getSize();
-            pack();
-            final Dimension newSize = getMinimumSize();
-            oldSize.width = Math.max(oldSize.width, newSize.width);
-            oldSize.height = Math.max(oldSize.height, newSize.height);
-            setSize(oldSize);
+            revalidate();
+            repaint();
         });
 
         optionalCheckboxPanel = new JPanel();
@@ -201,8 +169,8 @@ public final class InstallPackDialog extends JDialog implements HasLogger {
         downloadBars.add(singleDownloadBar);
         downloadBars.setVisible(false);
 
-        GroupLayout layout = new GroupLayout(getContentPane());
-        getContentPane().setLayout(layout);
+        GroupLayout layout = new GroupLayout(this);
+        setLayout(layout);
         layout.setAutoCreateGaps(true);
         layout.setAutoCreateContainerGaps(true);
         layout.setHorizontalGroup(layout.createParallelGroup(Alignment.CENTER)
@@ -361,7 +329,7 @@ public final class InstallPackDialog extends JDialog implements HasLogger {
                     JOptionPane.showMessageDialog(
                         this,
                         "Finished installing pack " + packFile.getName() + "!",
-                        getTitle(),
+                        GeneralUtil.getTitle(this),
                         JOptionPane.INFORMATION_MESSAGE
                     );
                 }

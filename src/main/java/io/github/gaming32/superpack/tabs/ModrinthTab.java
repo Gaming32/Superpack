@@ -62,7 +62,6 @@ import org.slf4j.LoggerFactory;
 import io.github.gaming32.mrpacklib.Mrpack.EnvCompatibility;
 import io.github.gaming32.mrpacklib.Mrpack.EnvSide;
 import io.github.gaming32.pipeline.Pipelines;
-import io.github.gaming32.superpack.InstallPackDialog;
 import io.github.gaming32.superpack.ProgressDialog;
 import io.github.gaming32.superpack.Superpack;
 import io.github.gaming32.superpack.SuperpackMainFrame;
@@ -766,16 +765,15 @@ public final class ModrinthTab extends JPanel implements HasLogger, Scrollable {
                             final Runnable completed = () -> {
                                 progress.setVisible(false);
                                 try {
-                                    final InstallPackDialog dialog = new InstallPackDialog(
+                                    final InstallPackTab dialog = new InstallPackTab(
                                         parent,
                                         cacheFile,
-                                        file.getUrl().toExternalForm(),
-                                        parent.themeDetector
+                                        file.getUrl().toExternalForm()
                                     );
                                     if (defaultSide != null) {
                                         dialog.setDefaultSide(defaultSide);
                                     }
-                                    dialog.setVisible(true);
+                                    parent.openInstallPack(dialog);
                                 } catch (IOException e) {
                                     GeneralUtil.showErrorMessage(this, e);
                                 }

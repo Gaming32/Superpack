@@ -64,8 +64,7 @@ public final class GeneralUtil {
     }
 
     public static <T extends Component & HasLogger> void showErrorMessage(T owner, String message) {
-        final Frame ownerFrame = (Frame)SwingUtilities.getAncestorOfClass(Frame.class, owner);
-        showErrorMessage(owner, message, ownerFrame != null ? ownerFrame.getTitle() : Superpack.APP_NAME);
+        showErrorMessage(owner, message, getTitle(owner));
     }
 
     public static <T extends Component & HasLogger> void showErrorMessage(T owner, String message, String title) {
@@ -74,8 +73,7 @@ public final class GeneralUtil {
     }
 
     public static void onlyShowErrorMessage(Component owner, String message) {
-        final Frame ownerFrame = (Frame)SwingUtilities.getAncestorOfClass(Frame.class, owner);
-        onlyShowErrorMessage(owner, message, ownerFrame != null ? ownerFrame.getTitle() : Superpack.APP_NAME);
+        onlyShowErrorMessage(owner, message, getTitle(owner));
     }
 
     public static void onlyShowErrorMessage(Component owner, String message, String title) {
@@ -212,5 +210,10 @@ public final class GeneralUtil {
         model.setPressed(!pressed);
         model.setPressed(pressed);
         if (!armed) model.setArmed(false);
+    }
+
+    public static String getTitle(Component comp) {
+        final Frame ownerFrame = (Frame)SwingUtilities.getAncestorOfClass(Frame.class, comp);
+        return ownerFrame != null ? ownerFrame.getTitle() : Superpack.APP_NAME;
     }
 }

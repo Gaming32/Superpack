@@ -23,6 +23,7 @@ import com.jthemedetecor.OsThemeDetector;
 import io.github.gaming32.superpack.jxtabbedpane.AbstractTabRenderer;
 import io.github.gaming32.superpack.jxtabbedpane.JXTabbedPane;
 import io.github.gaming32.superpack.tabs.ImportTab;
+import io.github.gaming32.superpack.tabs.InstallPackTab;
 import io.github.gaming32.superpack.tabs.ModrinthTab;
 import io.github.gaming32.superpack.tabs.SettingsTab;
 import io.github.gaming32.superpack.util.HasLogger;
@@ -44,12 +45,16 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
     });
     public final OsThemeDetector themeDetector;
 
+    private final JXTabbedPane tabbedPane;
+
+    private InstallPackTab installPackTab = null;
+
     public SuperpackMainFrame(OsThemeDetector themeDetector) {
         super(Superpack.APP_NAME);
         this.themeDetector = themeDetector;
         themeDetector.registerListener(themeListener);
 
-        final JXTabbedPane tabbedPane = new JXTabbedPane(JTabbedPane.LEFT);
+        tabbedPane = new JXTabbedPane(JTabbedPane.LEFT);
         final AbstractTabRenderer tabRenderer = (AbstractTabRenderer)tabbedPane.getTabRenderer();
         tabRenderer.setPrototypeText("Import from file");
         tabRenderer.setHorizontalTextAlignment(SwingConstants.LEADING);
@@ -94,7 +99,6 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
         setContentPane(tabbedPane);
         pack();
         setSize(960, 540);
-        setVisible(true);
     }
 
     @Override
@@ -106,5 +110,22 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
     public void dispose() {
         super.dispose();
         themeDetector.removeListener(themeListener);
+        if (installPackTab != null) {
+            installPackTab.close();
+        }
+    }
+
+    public void openInstallPack(InstallPackTab tab) {
+        if (installPackTab != null) {
+            final int tabIndex = tabbedPane.indexOfComponent(installPackTab);
+            installPackTab.close();
+            installPackTab = tab;
+            tabbedPane.setComponentAt(tabIndex, tab);
+            tabbedPane.setSelectedIndex(tabIndex);
+        } else {
+            installPackTab = tab;
+            tabbedPane.addTab("Install Pack", tab);
+            tabbedPane.setSelectedIndex(tabbedPane.getTabCount() - 1);
+        }
     }
 }
