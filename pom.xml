@@ -102,7 +102,7 @@
         <configuration>
           <archive>
             <manifest>
-              <mainClass>io.github.gaming32.superpack.SuperpackMain</mainClass>
+              <mainClass>io.github.gaming32.superpack.Superpack</mainClass>
             </manifest>
           </archive>
         </configuration>
