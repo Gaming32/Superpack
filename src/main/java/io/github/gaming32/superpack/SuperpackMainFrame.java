@@ -74,7 +74,7 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
             });
         }
         tabbedPane.addTab("Import from file", new ImportTab(this));
-        tabbedPane.addTab("Settings", this);
+        tabbedPane.addTab("Settings", new SettingsTab(this));
 
         tabbedPane.addChangeListener(ev -> {
             final Component component = tabbedPane.getSelectedComponent();
