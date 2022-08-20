@@ -216,4 +216,9 @@ public final class GeneralUtil {
         final Frame ownerFrame = (Frame)SwingUtilities.getAncestorOfClass(Frame.class, comp);
         return ownerFrame != null ? ownerFrame.getTitle() : Superpack.APP_NAME;
     }
+
+    public static void readAndDiscard(InputStream is) throws IOException {
+        byte[] buf = new byte[8192];
+        while (is.read(buf) != -1);
+    }
 }

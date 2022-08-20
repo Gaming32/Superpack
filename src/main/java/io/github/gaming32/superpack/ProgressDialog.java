@@ -57,6 +57,7 @@ public final class ProgressDialog extends JDialog implements HasLogger {
         final JPanel cancelPanel = new JPanel();
         cancelPanel.setLayout(new BorderLayout());
         cancelPanel.setBorder(BorderFactory.createEmptyBorder(0, 5, 5, 5));
+        // final JButton cancelButton = new JButton("Cancel");
         final JButton cancelButton = new JButton("Cancel");
         cancelButton.addActionListener(ev -> dispose());
         cancelPanel.add(cancelButton, BorderLayout.EAST);

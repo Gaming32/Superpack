@@ -67,6 +67,7 @@ import io.github.gaming32.superpack.Superpack;
 import io.github.gaming32.superpack.SuperpackMainFrame;
 import io.github.gaming32.superpack.labrinth.BaseProject;
 import io.github.gaming32.superpack.labrinth.LabrinthGson;
+import io.github.gaming32.superpack.labrinth.ModrinthId;
 import io.github.gaming32.superpack.labrinth.Project;
 import io.github.gaming32.superpack.labrinth.SearchResults;
 import io.github.gaming32.superpack.labrinth.Version;
@@ -134,6 +135,12 @@ public final class ModrinthTab extends JPanel implements HasLogger, Scrollable {
     @Override
     public boolean getScrollableTracksViewportHeight() {
         return false;
+    }
+
+    public void openOnModrinth(ModrinthId projectId) {
+        removeAll();
+        add(modpackInformationPanel);
+        modpackInformationPanel.loadProject(projectId.getId());
     }
 
     private void loadProjectIcon(BaseProject project, Consumer<Image> completionHandler) {
@@ -439,7 +446,7 @@ public final class ModrinthTab extends JPanel implements HasLogger, Scrollable {
             super.doLayout();
         }
 
-        void loadProject(String projectIdOrSlug) {
+        public void loadProject(String projectIdOrSlug) {
             mainPanel.removeAll();
             mainPanel.add(loading);
             if (loadingThread != null) {
@@ -768,7 +775,8 @@ public final class ModrinthTab extends JPanel implements HasLogger, Scrollable {
                                     final InstallPackTab dialog = new InstallPackTab(
                                         parent,
                                         cacheFile,
-                                        file.getUrl().toExternalForm()
+                                        file.getUrl().toExternalForm(),
+                                        file.getFilename()
                                     );
                                     if (defaultSide != null) {
                                         dialog.setDefaultSide(defaultSide);

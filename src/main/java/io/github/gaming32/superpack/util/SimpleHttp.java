@@ -6,6 +6,8 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
+import lombok.val;
+
 public final class SimpleHttp {
     private SimpleHttp() {
     }
@@ -30,7 +32,7 @@ public final class SimpleHttp {
     private static URL buildUrl(StringBuilder url, Map<String, ? extends Object> queryParams) throws MalformedURLException {
         if (!queryParams.isEmpty()) {
             url.append('?');
-            for (final var entry : queryParams.entrySet()) {
+            for (val entry : queryParams.entrySet()) {
                 url.append(entry.getKey());
                 url.append('=');
                 url.append(URLEncoder.encode(entry.getValue().toString(), StandardCharsets.UTF_8));

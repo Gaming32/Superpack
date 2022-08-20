@@ -22,11 +22,13 @@ import com.jthemedetecor.OsThemeDetector;
 
 import io.github.gaming32.superpack.jxtabbedpane.AbstractTabRenderer;
 import io.github.gaming32.superpack.jxtabbedpane.JXTabbedPane;
+import io.github.gaming32.superpack.labrinth.ModrinthId;
 import io.github.gaming32.superpack.tabs.ImportTab;
 import io.github.gaming32.superpack.tabs.InstallPackTab;
 import io.github.gaming32.superpack.tabs.ModrinthTab;
 import io.github.gaming32.superpack.tabs.SettingsTab;
 import io.github.gaming32.superpack.util.HasLogger;
+import lombok.val;
 
 public final class SuperpackMainFrame extends JFrame implements HasLogger {
     private static final Logger LOGGER = LoggerFactory.getLogger(SuperpackMainFrame.class);
@@ -39,7 +41,7 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
             FlatLightLaf.setup();
         }
         SwingUtilities.updateComponentTreeUI(this);
-        for (final var iconListener : iconThemeListeners) {
+        for (val iconListener : iconThemeListeners) {
             iconListener.accept(isDark ? "/dark" : "/light");
         }
     });
@@ -47,6 +49,8 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
 
     private final JXTabbedPane tabbedPane;
 
+    private final JScrollPane modrinthTabScroll;
+    private final ModrinthTab modrinthTab;
     private InstallPackTab installPackTab = null;
 
     public SuperpackMainFrame(OsThemeDetector themeDetector) {
@@ -60,14 +64,14 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
         tabRenderer.setHorizontalTextAlignment(SwingConstants.LEADING);
 
         {
-            final JScrollPane modrinthTab = new JScrollPane(
-                new ModrinthTab(this),
+            modrinthTabScroll = new JScrollPane(
+                modrinthTab = new ModrinthTab(this),
                 JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
                 JScrollPane.HORIZONTAL_SCROLLBAR_NEVER
             );
-            modrinthTab.setBorder(BorderFactory.createEmptyBorder());
-            modrinthTab.getVerticalScrollBar().setUnitIncrement(16);
-            tabbedPane.addTab("Modrinth", modrinthTab);
+            modrinthTabScroll.setBorder(BorderFactory.createEmptyBorder());
+            modrinthTabScroll.getVerticalScrollBar().setUnitIncrement(16);
+            tabbedPane.addTab("Modrinth", modrinthTabScroll);
             final int modrinthTabIndex = tabbedPane.getTabCount() - 1;
             iconThemeListeners.add(root -> {
                 final String iconPath = root + "/modrinth.png";
@@ -90,7 +94,7 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
 
         {
             final boolean isDark = themeDetector.isDark();
-            for (final var iconListener : iconThemeListeners) {
+            for (val iconListener : iconThemeListeners) {
                 iconListener.accept(isDark ? "/dark" : "/light");
             }
         }
@@ -127,5 +131,10 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
             tabbedPane.addTab("Install Pack", tab);
             tabbedPane.setSelectedIndex(tabbedPane.getTabCount() - 1);
         }
+    }
+
+    public void openOnModrinth(ModrinthId projectId) {
+        tabbedPane.setSelectedComponent(modrinthTabScroll);
+        modrinthTab.openOnModrinth(projectId);
     }
 }

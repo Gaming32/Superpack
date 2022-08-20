@@ -6,6 +6,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URL;
 import java.nio.file.Files;
@@ -40,6 +42,8 @@ import javax.swing.SwingUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.gson.JsonSyntaxException;
+
 import io.github.gaming32.mrpacklib.Mrpack;
 import io.github.gaming32.mrpacklib.Mrpack.EnvCompatibility;
 import io.github.gaming32.mrpacklib.Mrpack.EnvSide;
@@ -47,19 +51,26 @@ import io.github.gaming32.mrpacklib.packindex.PackFile;
 import io.github.gaming32.superpack.FileDialogs;
 import io.github.gaming32.superpack.Superpack;
 import io.github.gaming32.superpack.SuperpackMainFrame;
+import io.github.gaming32.superpack.SuperpackSettings;
+import io.github.gaming32.superpack.labrinth.LabrinthGson;
+import io.github.gaming32.superpack.labrinth.ModrinthId;
+import io.github.gaming32.superpack.labrinth.Version;
 import io.github.gaming32.superpack.util.DisplayErrorMessageMarker;
 import io.github.gaming32.superpack.util.GeneralUtil;
 import io.github.gaming32.superpack.util.HasLogger;
 import io.github.gaming32.superpack.util.MultiMessageDigest;
 import io.github.gaming32.superpack.util.NonWrappingTextPane;
+import io.github.gaming32.superpack.util.SimpleHttp;
 import io.github.gaming32.superpack.util.TrackingInputStream;
 
 public final class InstallPackTab extends JPanel implements HasLogger, AutoCloseable {
     private static final Logger LOGGER = LoggerFactory.getLogger(InstallPackTab.class);
 
+    private final SuperpackMainFrame parent;
     private final File packFile;
     private final ZipFile packZip;
     private final Mrpack pack;
+    private final String friendlyName;
 
     private JTextField selectedPack;
     private JTextField outputDir;
@@ -67,6 +78,7 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
     private JComboBox<EnvSide> side;
     private JPanel optionalCheckboxPanel;
     private Map<String, JCheckBox> optionalCheckboxes;
+    private JButton viewOnModrinthButton;
     private JButton installButton;
     private JTextPane installOutput;
 
@@ -74,10 +86,14 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
     private JProgressBar overallDownloadBar;
     private JProgressBar singleDownloadBar;
 
-    public InstallPackTab(SuperpackMainFrame parent, File packFile, String selectedFilename) throws IOException {
+    private ModrinthId modrinthProjectId;
+
+    public InstallPackTab(SuperpackMainFrame parent, File packFile, String selectedFilename, String friendlyName) throws IOException {
         super();
+        this.parent = parent;
         this.packFile = packFile;
         pack = new Mrpack(packZip = new ZipFile(packFile));
+        this.friendlyName = friendlyName;
 
         createComponents();
 
@@ -85,7 +101,7 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
     }
 
     public InstallPackTab(SuperpackMainFrame parent, File packFile) throws IOException {
-        this(parent, packFile, packFile.getAbsolutePath());
+        this(parent, packFile, packFile.getAbsolutePath(), packFile.getName());
     }
 
     public void setDefaultSide(EnvSide side) {
@@ -135,6 +151,23 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
         optionalCheckboxes = new HashMap<>();
         populateOptionalCheckboxes();
 
+        viewOnModrinthButton = new JButton("View on Modrinth");
+        if (SuperpackSettings.INSTANCE.isCheckForPackOnModrinth()) {
+            viewOnModrinthButton.setEnabled(false);
+            getModrinthProjectId(() -> {
+                if (modrinthProjectId != null) {
+                    viewOnModrinthButton.setEnabled(true);
+                }
+            });
+        }
+        viewOnModrinthButton.addActionListener(ev -> {
+            if (modrinthProjectId == null) {
+                getModrinthProjectId(this::openOnModrinth);
+                return;
+            }
+            openOnModrinth();
+        });
+
         installButton = new JButton("Install!");
         installButton.addActionListener(ev -> {
             setConfigEnabled(false);
@@ -155,7 +188,6 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
             ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
             ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED
         );
-        outputScrollPane.getMinimumSize().height = 20;
 
         overallDownloadBar = new JProgressBar();
         overallDownloadBar.setStringPainted(true);
@@ -203,9 +235,15 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                 optionalCheckboxPanel, Alignment.TRAILING,
                 GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE
             )
-            .addComponent(
-                installButton,
-                GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE
+            .addGroup(layout.createSequentialGroup()
+                .addComponent(
+                    viewOnModrinthButton,
+                    GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE
+                )
+                .addComponent(
+                    installButton,
+                    GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE
+                )
             )
             .addComponent(outputScrollPane)
             .addComponent(downloadBars)
@@ -249,9 +287,15 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                 optionalCheckboxPanel,
                 GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE
             )
-            .addComponent(
-                installButton,
-                GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE
+            .addGroup(layout.createParallelGroup(Alignment.CENTER)
+                .addComponent(
+                    viewOnModrinthButton,
+                    GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE
+                )
+                .addComponent(
+                    installButton,
+                    GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE
+                )
             )
             .addComponent(outputScrollPane)
             .addComponent(downloadBars)
@@ -279,6 +323,51 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
         } catch (IOException e) {
             GeneralUtil.showErrorMessage(this, e);
         }
+    }
+
+    private void getModrinthProjectId(Runnable completionAction) {
+        if (modrinthProjectId != null) {
+            if (completionAction != null) {
+                completionAction.run();
+            }
+            return;
+        }
+        final Thread lookupThread = new Thread(() -> {
+            final MessageDigest digest;
+            try {
+                digest = MessageDigest.getInstance("SHA-1");
+                try (InputStream is = new DigestInputStream(new FileInputStream(packFile), digest)) {
+                    GeneralUtil.readAndDiscard(is);
+                }
+            } catch (Exception e) {
+                LOGGER.error("Hashing of " + packFile + " failed", e);
+                return;
+            }
+            final Version versionData;
+            try (Reader reader = new InputStreamReader(SimpleHttp.createUrl(
+                    Superpack.MODRINTH_API_ROOT,
+                    "/version_file/" + GeneralUtil.toHexString(digest.digest()),
+                    Map.of()
+                ).openStream())
+            ) {
+                versionData = LabrinthGson.GSON.fromJson(reader, Version.class);
+            } catch (IOException | JsonSyntaxException e) { // Gson rethrows IOExceptions as JsonSyntaxExceptions
+                SwingUtilities.invokeLater(completionAction);
+                return;
+            }
+            modrinthProjectId = versionData.getProjectId();
+            SwingUtilities.invokeLater(completionAction);
+        });
+        lookupThread.setDaemon(true);
+        lookupThread.start();
+    }
+
+    private void openOnModrinth() {
+        if (modrinthProjectId == null) {
+            GeneralUtil.onlyShowErrorMessage(this, "File not found on Modrinth");
+            return;
+        }
+        parent.openOnModrinth(modrinthProjectId);
     }
 
     private void setConfigEnabled(boolean enabled) {
@@ -328,7 +417,7 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                 if (showSuccessMessage0) {
                     JOptionPane.showMessageDialog(
                         this,
-                        "Finished installing pack " + packFile.getName() + "!",
+                        "Finished installing pack " + friendlyName + "!",
                         GeneralUtil.getTitle(this),
                         JOptionPane.INFORMATION_MESSAGE
                     );
@@ -385,8 +474,7 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
             if (Files.exists(destPath.toPath()) && Files.size(destPath.toPath()) == file.getFileSize()) {
                 digest.getDigests()[0].reset();
                 try (InputStream is = new DigestInputStream(new FileInputStream(destPath), digest.getDigests()[0])) {
-                    byte[] buf = new byte[8192];
-                    while (is.read(buf) != -1);
+                    GeneralUtil.readAndDiscard(is);
                 }
                 if (Arrays.equals(
                     digest.getDigests()[0].digest(),
