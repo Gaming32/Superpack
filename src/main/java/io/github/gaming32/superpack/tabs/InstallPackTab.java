@@ -357,7 +357,7 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
             }
             modrinthProjectId = versionData.getProjectId();
             SwingUtilities.invokeLater(completionAction);
-        });
+        }, "LookupModrinthVersion");
         lookupThread.setDaemon(true);
         lookupThread.start();
     }
