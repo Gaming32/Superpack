@@ -746,9 +746,10 @@ public final class ModrinthTab extends JPanel implements HasLogger, Scrollable {
 
                             button.add(centerPanel);
                         }
-                        final Version.File file = GeneralUtil.findFirst(
-                            Pipelines.iterator(version.getFiles()).filter(Version.File::isPrimary)
-                        ).orElse(version.getFiles()[0]);
+                        final Version.File file = Pipelines.iterator(version.getFiles())
+                            .filter(Version.File::isPrimary)
+                            .findFirst()
+                            .orElse(version.getFiles()[0]);
                         {
                             final JPanel rightPanel = new JPanel();
                             rightPanel.setAlignmentX(JPanel.RIGHT_ALIGNMENT);
