@@ -88,7 +88,6 @@ public final class SettingsTab extends JPanel implements HasLogger {
                     try {
                         GeneralUtil.rmdir(Superpack.CACHE_DIR.toPath());
                         Superpack.CACHE_DIR.mkdirs();
-                        Superpack.DOWNLOAD_CACHE_DIR.mkdir();
                         calculateCacheSize();
                     } catch (Exception ioe) {
                         GeneralUtil.showErrorMessage(this, ioe);

@@ -313,7 +313,11 @@ public final class ModrinthTab extends JPanel implements HasLogger, Scrollable {
 
                         final JLabel icon = new JLabel(placeholderIcon);
                         if (project.getIconUrl() != null) {
-                            GeneralUtil.loadProjectIcon(project.getIconUrl(), image -> icon.setIcon(new ImageIcon(image)));
+                            GeneralUtil.loadProjectIcon(project.getIconUrl(), image -> {
+                                if (image != null) {
+                                    icon.setIcon(new ImageIcon(image));
+                                }
+                            });
                         }
 
                         final JLabel title = new JLabel(project.getTitle());

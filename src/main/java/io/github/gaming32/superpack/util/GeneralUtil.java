@@ -2,7 +2,10 @@ package io.github.gaming32.superpack.util;
 
 import java.awt.Component;
 import java.awt.Frame;
+import java.awt.Graphics;
 import java.awt.Image;
+import java.awt.image.BufferedImage;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStreamWriter;
@@ -263,9 +266,20 @@ public final class GeneralUtil {
     public static byte[] sha1(InputStream is) throws IOException {
         final MessageDigest digest = getSha1();
         try (InputStream is2 = new DigestInputStream(is, digest)) {
-            GeneralUtil.readAndDiscard(is2);
+            readAndDiscard(is2);
             return digest.digest();
         }
+    }
+
+    public static String getIconCacheKey(String iconUrl) {
+        final int lastSlash = iconUrl.lastIndexOf('/');
+        final String lastPathPart = iconUrl.substring(lastSlash + 1);
+        if (lastPathPart.startsWith("icon.")) {
+            return
+                iconUrl.substring(iconUrl.lastIndexOf('/', lastSlash - 1) + 1, lastSlash) +
+                iconUrl.substring(iconUrl.lastIndexOf('.')); // Extract the icon hash
+        }
+        return lastPathPart; // This is the project ID. This is ok to use, because if the project ever has its icon updated, the hash will then be used.
     }
 
     public static void loadProjectIcon(URL iconUrl, Consumer<Image> completionHandler) {
@@ -275,13 +289,36 @@ public final class GeneralUtil {
     public static CompletableFuture<Image> loadProjectIcon(URL iconUrl) {
         // Swing has its own method of downloading and caching images like this, however that lacks
         // paralellism and blocks while it loads the images.
-        return IMAGE_CACHE.getFuture(iconUrl.toExternalForm(), key -> {
+        return IMAGE_CACHE.getFuture(iconUrl.toExternalForm(), strUrl -> {
+            final String cacheKey = getIconCacheKey(strUrl);
+            final File iconCache = new File(Superpack.ICON_CACHE_DIR, cacheKey);
+            Image image;
             try {
-                return ImageIO.read(iconUrl).getScaledInstance(THUMBNAIL_SIZE, THUMBNAIL_SIZE, Image.SCALE_SMOOTH);
-            } catch (IOException e) {
-                LOGGER.error("Error loading icon {}", iconUrl, e);
+                if (iconCache.exists()) {
+                    return ImageIO.read(iconCache);
+                }
+                image = ImageIO.read(iconUrl);
+                if (image == null) return null;
+                image = image.getScaledInstance(THUMBNAIL_SIZE, THUMBNAIL_SIZE, Image.SCALE_SMOOTH);
+            } catch (Exception e) {
+                LOGGER.error("Error loading icon " + strUrl, e);
                 return null;
             }
+            try {
+                iconCache.getParentFile().mkdirs();
+                ImageIO.write(toBufferedImage(image), cacheKey.substring(cacheKey.lastIndexOf('.') + 1), iconCache);
+            } catch (Exception e) {
+                LOGGER.error("Error caching icon " + cacheKey, e);
+            }
+            return image;
         });
+    }
+
+    public static BufferedImage toBufferedImage(Image image) {
+        final BufferedImage result = new BufferedImage(image.getWidth(null), image.getHeight(null), BufferedImage.TYPE_4BYTE_ABGR);
+        final Graphics g = result.getGraphics();
+        g.drawImage(image, 0, 0, null);
+        g.dispose();
+        return result;
     }
 }

@@ -29,6 +29,7 @@ public class Superpack {
     public static final File SETTINGS_FILE = new File(DATA_DIR, "settings.json");
     public static final File CACHE_DIR = new File(DATA_DIR, "cache");
     public static final File DOWNLOAD_CACHE_DIR = new File(CACHE_DIR, "downloadCache");
+    public static final File ICON_CACHE_DIR = new File(CACHE_DIR, "iconCache");
 
     public static void main(String[] args) {
         try (Reader reader = new FileReader(SETTINGS_FILE, StandardCharsets.UTF_8)) {
