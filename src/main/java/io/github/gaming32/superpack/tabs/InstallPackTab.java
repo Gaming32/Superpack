@@ -333,12 +333,9 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
             return;
         }
         final Thread lookupThread = new Thread(() -> {
-            final MessageDigest digest;
+            final byte[] hash;
             try {
-                digest = MessageDigest.getInstance("SHA-1");
-                try (InputStream is = new DigestInputStream(new FileInputStream(packFile), digest)) {
-                    GeneralUtil.readAndDiscard(is);
-                }
+                hash = GeneralUtil.sha1(new FileInputStream(packFile));
             } catch (Exception e) {
                 LOGGER.error("Hashing of " + packFile + " failed", e);
                 return;
@@ -346,7 +343,7 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
             final Version versionData;
             try (Reader reader = new InputStreamReader(SimpleHttp.createUrl(
                     Superpack.MODRINTH_API_ROOT,
-                    "/version_file/" + GeneralUtil.toHexString(digest.digest()),
+                    "/version_file/" + GeneralUtil.toHexString(hash),
                     Map.of()
                 ).openStream())
             ) {
@@ -439,7 +436,7 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
 
         println("\nDownloading files...");
         MultiMessageDigest digest = new MultiMessageDigest(
-            MessageDigest.getInstance("SHA-1"),
+            GeneralUtil.getSha1(),
             MessageDigest.getInstance("SHA-512")
         );
         long totalDownloadSize = 0;

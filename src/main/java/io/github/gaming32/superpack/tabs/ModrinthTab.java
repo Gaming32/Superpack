@@ -1,5 +1,7 @@
 package io.github.gaming32.superpack.tabs;
 
+import static io.github.gaming32.superpack.util.GeneralUtil.THUMBNAIL_SIZE;
+
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
@@ -11,7 +13,6 @@ import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.GridLayout;
-import java.awt.Image;
 import java.awt.Rectangle;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -31,11 +32,9 @@ import java.security.MessageDigest;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ForkJoinPool;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-import javax.imageio.ImageIO;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.GroupLayout;
@@ -65,7 +64,6 @@ import io.github.gaming32.pipeline.Pipelines;
 import io.github.gaming32.superpack.ProgressDialog;
 import io.github.gaming32.superpack.Superpack;
 import io.github.gaming32.superpack.SuperpackMainFrame;
-import io.github.gaming32.superpack.labrinth.BaseProject;
 import io.github.gaming32.superpack.labrinth.LabrinthGson;
 import io.github.gaming32.superpack.labrinth.ModrinthId;
 import io.github.gaming32.superpack.labrinth.Project;
@@ -76,18 +74,15 @@ import io.github.gaming32.superpack.util.HasLogger;
 import io.github.gaming32.superpack.util.MultiMessageDigest;
 import io.github.gaming32.superpack.util.PlaceholderTextField;
 import io.github.gaming32.superpack.util.SimpleHttp;
-import io.github.gaming32.superpack.util.SoftCacheMap;
 import io.github.gaming32.superpack.util.TrackingInputStream;
 
 public final class ModrinthTab extends JPanel implements HasLogger, Scrollable {
     private static final Logger LOGGER = LoggerFactory.getLogger(ModrinthTab.class);
-    private static final int THUMBNAIL_SIZE = 64;
     private static final int PER_PAGE = 50;
 
     private final SuperpackMainFrame parent;
 
     private final ImageIcon placeholderIcon;
-    private final SoftCacheMap<String, Image> imageCache = new SoftCacheMap<>();
 
     private final MainList mainList;
     private final ModpackInformationPanel modpackInformationPanel;
@@ -141,23 +136,6 @@ public final class ModrinthTab extends JPanel implements HasLogger, Scrollable {
         removeAll();
         add(modpackInformationPanel);
         modpackInformationPanel.loadProject(projectId.getId());
-    }
-
-    private void loadProjectIcon(BaseProject project, Consumer<Image> completionHandler) {
-        // Swing has its own method of downloading and caching images like this, however that lacks
-        // paralellism and blocks while it loads the images.
-        ForkJoinPool.commonPool().submit(() -> {
-            final Image image = imageCache.get(project.getId().getId(), key -> {
-                try {
-                    return ImageIO.read(project.getIconUrl()).getScaledInstance(THUMBNAIL_SIZE, THUMBNAIL_SIZE, Image.SCALE_SMOOTH);
-                } catch (IOException e) {
-                    LOGGER.error("Error loading icon for {}", project.getSlug(), e);
-                    return null;
-                }
-            });
-            if (image == null) return;
-            SwingUtilities.invokeLater(() -> completionHandler.accept(image));
-        });
     }
 
     private JLabel createLoadingLabel() {
@@ -335,7 +313,7 @@ public final class ModrinthTab extends JPanel implements HasLogger, Scrollable {
 
                         final JLabel icon = new JLabel(placeholderIcon);
                         if (project.getIconUrl() != null) {
-                            loadProjectIcon(project, image -> icon.setIcon(new ImageIcon(image)));
+                            GeneralUtil.loadProjectIcon(project.getIconUrl(), image -> icon.setIcon(new ImageIcon(image)));
                         }
 
                         final JLabel title = new JLabel(project.getTitle());
@@ -480,7 +458,7 @@ public final class ModrinthTab extends JPanel implements HasLogger, Scrollable {
 
                     final JLabel icon = new JLabel(placeholderIcon);
                     if (project.getIconUrl() != null) {
-                        loadProjectIcon(project, image -> icon.setIcon(new ImageIcon(image)));
+                        GeneralUtil.loadProjectIcon(project.getIconUrl(), image -> icon.setIcon(new ImageIcon(image)));
                     }
                     nameAndIcon.add(icon);
 
@@ -800,7 +778,7 @@ public final class ModrinthTab extends JPanel implements HasLogger, Scrollable {
                                             progress.setString("Downloading file... 0 B / " + downloadFileSize);
                                         });
                                         final MultiMessageDigest digest = new MultiMessageDigest(
-                                            MessageDigest.getInstance("SHA-1"),
+                                            GeneralUtil.getSha1(),
                                             MessageDigest.getInstance("SHA-512")
                                         );
                                         long downloadSize;

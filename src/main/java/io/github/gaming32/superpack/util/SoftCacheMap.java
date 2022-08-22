@@ -5,6 +5,7 @@ import java.lang.ref.SoftReference;
 import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
@@ -59,10 +60,34 @@ public final class SoftCacheMap<K, V> {
                 synchronized (reverseMap) {
                     reverseMap.put(newRef, key);
                 }
-                return value;
             }
+            return value;
         }
-        return ref != null ? ref.get() : null;
+        return ref.get();
+    }
+
+    public CompletableFuture<V> getFuture(K key) {
+        return getFuture(key, factory);
+    }
+
+    public CompletableFuture<V> getFuture(K key, Function<K, V> factory) {
+        Objects.requireNonNull(factory, "Must supply factory if no default is specified");
+        expungeStaleEntries();
+        final SoftReference<V> ref = map.get(key);
+        if (ref == null) {
+            return CompletableFuture.supplyAsync(() -> {
+                final V value = factory.apply(key);
+                if (value != null) {
+                    final SoftReference<V> newRef = newValue(value);
+                    map.put(key, newRef);
+                    synchronized (reverseMap) {
+                        reverseMap.put(newRef, key);
+                    }
+                }
+                return value;
+            });
+        }
+        return CompletableFuture.completedFuture(ref != null ? ref.get() : null);
     }
 
     public V regenerate(K key) {

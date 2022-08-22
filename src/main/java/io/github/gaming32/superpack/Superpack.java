@@ -5,6 +5,7 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.Reader;
 import java.io.Writer;
+import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 
 import javax.swing.SwingUtilities;
@@ -30,7 +31,7 @@ public class Superpack {
     public static final File DOWNLOAD_CACHE_DIR = new File(CACHE_DIR, "downloadCache");
 
     public static void main(String[] args) {
-        try (Reader reader = new FileReader(SETTINGS_FILE)) {
+        try (Reader reader = new FileReader(SETTINGS_FILE, StandardCharsets.UTF_8)) {
             SuperpackSettings.INSTANCE.copyFromRead(reader);
         } catch (Exception e) {
             LOGGER.warn("Failed to load settings, using defaults", e);
@@ -59,7 +60,7 @@ public class Superpack {
     }
 
     public static void saveSettings() {
-        try (Writer writer = new FileWriter(SETTINGS_FILE)) {
+        try (Writer writer = new FileWriter(SETTINGS_FILE, StandardCharsets.UTF_8)) {
             SuperpackSettings.INSTANCE.write(writer);
         } catch (Exception e) {
             LOGGER.error("Failed to save settings", e);

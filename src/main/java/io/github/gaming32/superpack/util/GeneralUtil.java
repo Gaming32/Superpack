@@ -2,6 +2,7 @@ package io.github.gaming32.superpack.util;
 
 import java.awt.Component;
 import java.awt.Frame;
+import java.awt.Image;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStreamWriter;
@@ -17,12 +18,17 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.security.DigestInputStream;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.text.DecimalFormat;
 import java.util.Iterator;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.stream.LongStream;
 
+import javax.imageio.ImageIO;
 import javax.swing.AbstractButton;
 import javax.swing.ButtonModel;
 import javax.swing.JOptionPane;
@@ -31,17 +37,32 @@ import javax.swing.SwingUtilities;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.google.gson.stream.JsonWriter;
 
 import io.github.gaming32.superpack.Superpack;
 
 public final class GeneralUtil {
+    private static final Logger LOGGER = LoggerFactory.getLogger(GeneralUtil.class);
+
+    public static final int THUMBNAIL_SIZE = 64;
+
+    private static final ThreadLocal<MessageDigest> SHA1 = ThreadLocal.withInitial(() -> {
+        try {
+            return MessageDigest.getInstance("SHA-1");
+        } catch (NoSuchAlgorithmException e) {
+            throw new Error(e);
+        }
+    });
     private static final String[] SIZE_UNITS = {
         "B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"
     };
     private static final DecimalFormat SIZE_FORMAT = new DecimalFormat("#,###.##");
     private static final char[] HEX_CHARS = "0123456789abcdef".toCharArray();
     private static final URL GITHUB_MARKDOWN_URL;
+    private static final SoftCacheMap<String, Image> IMAGE_CACHE = new SoftCacheMap<>();
 
     static {
         try {
@@ -220,5 +241,47 @@ public final class GeneralUtil {
     public static void readAndDiscard(InputStream is) throws IOException {
         byte[] buf = new byte[8192];
         while (is.read(buf) != -1);
+    }
+
+    public static MessageDigest getSha1() {
+        final MessageDigest digest = SHA1.get();
+        digest.reset();
+        return digest;
+    }
+
+    public static byte[] sha1(String input) {
+        return sha1(input.getBytes(StandardCharsets.UTF_8));
+    }
+
+    public static byte[] sha1(byte[] input) {
+        return getSha1().digest(input);
+    }
+
+    /**
+     * Computes the SHA-1 hash of the specified input stream, closing it afterwards.
+     */
+    public static byte[] sha1(InputStream is) throws IOException {
+        final MessageDigest digest = getSha1();
+        try (InputStream is2 = new DigestInputStream(is, digest)) {
+            GeneralUtil.readAndDiscard(is2);
+            return digest.digest();
+        }
+    }
+
+    public static void loadProjectIcon(URL iconUrl, Consumer<Image> completionHandler) {
+        loadProjectIcon(iconUrl).thenAccept(image -> SwingUtilities.invokeLater(() -> completionHandler.accept(image)));
+    }
+
+    public static CompletableFuture<Image> loadProjectIcon(URL iconUrl) {
+        // Swing has its own method of downloading and caching images like this, however that lacks
+        // paralellism and blocks while it loads the images.
+        return IMAGE_CACHE.getFuture(iconUrl.toExternalForm(), key -> {
+            try {
+                return ImageIO.read(iconUrl).getScaledInstance(THUMBNAIL_SIZE, THUMBNAIL_SIZE, Image.SCALE_SMOOTH);
+            } catch (IOException e) {
+                LOGGER.error("Error loading icon {}", iconUrl, e);
+                return null;
+            }
+        });
     }
 }
