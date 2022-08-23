@@ -106,6 +106,9 @@
             </manifest>
             <manifestEntries>
               <Multi-Release>true</Multi-Release> <!-- Some of our shaded dependencies are multi-release -->
+              <Title>${project.groupId}.${project.artifactId}</Title>
+              <Specification-Title>${project.name}</Specification-Title>
+              <Specification-Version>${project.version}</Specification-Version>
             </manifestEntries>
           </archive>
         </configuration>

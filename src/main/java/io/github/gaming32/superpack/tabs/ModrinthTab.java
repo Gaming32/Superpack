@@ -289,7 +289,7 @@ public final class ModrinthTab extends JPanel implements HasLogger, Scrollable {
                     search.put("query", query);
                 }
                 try (
-                    InputStream is = SimpleHttp.createUrl(Superpack.MODRINTH_API_ROOT, "/search", search).openStream();
+                    InputStream is = SimpleHttp.stream(SimpleHttp.createUrl(Superpack.MODRINTH_API_ROOT, "/search", search));
                     Reader reader = new InputStreamReader(is, StandardCharsets.UTF_8);
                 ) {
                     results = LabrinthGson.GSON.fromJson(reader, SearchResults.class);
@@ -439,7 +439,7 @@ public final class ModrinthTab extends JPanel implements HasLogger, Scrollable {
             loadingThread = new Thread(() -> {
                 final Project project;
                 try (
-                    InputStream is = SimpleHttp.createUrl(Superpack.MODRINTH_API_ROOT, "/project/" + projectIdOrSlug, Map.of()).openStream();
+                    InputStream is = SimpleHttp.stream(SimpleHttp.createUrl(Superpack.MODRINTH_API_ROOT, "/project/" + projectIdOrSlug, Map.of()));
                     Reader reader = new InputStreamReader(is, StandardCharsets.UTF_8);
                 ) {
                     project = LabrinthGson.GSON.fromJson(reader, Project.class);
@@ -666,7 +666,7 @@ public final class ModrinthTab extends JPanel implements HasLogger, Scrollable {
                     query.put("featured", true);
                 }
                 try (
-                    InputStream is = SimpleHttp.createUrl(Superpack.MODRINTH_API_ROOT, "/project/" + projectIdOrSlug + "/version", query).openStream();
+                    InputStream is = SimpleHttp.stream(SimpleHttp.createUrl(Superpack.MODRINTH_API_ROOT, "/project/" + projectIdOrSlug + "/version", query));
                     Reader reader = new InputStreamReader(is, StandardCharsets.UTF_8);
                 ) {
                     results = LabrinthGson.GSON.fromJson(reader, Version[].class);
@@ -791,7 +791,7 @@ public final class ModrinthTab extends JPanel implements HasLogger, Scrollable {
                                         );
                                         long downloadSize;
                                         try (InputStream is = new TrackingInputStream(
-                                            new DigestInputStream(downloadUrl.openStream(), digest),
+                                            new DigestInputStream(SimpleHttp.stream(downloadUrl), digest),
                                             read -> {
                                                 if (progress.cancelled()) {
                                                     final InterruptedIOException e = new InterruptedIOException();

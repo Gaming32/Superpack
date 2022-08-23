@@ -366,12 +366,11 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                 Superpack.saveMyPacks();
             });
             final Version versionData;
-            try (Reader reader = new InputStreamReader(SimpleHttp.createUrl(
-                    Superpack.MODRINTH_API_ROOT,
-                    "/version_file/" + GeneralUtil.toHexString(hash),
-                    Map.of()
-                ).openStream())
-            ) {
+            try (Reader reader = new InputStreamReader(SimpleHttp.stream(SimpleHttp.createUrl(
+                Superpack.MODRINTH_API_ROOT,
+                "/version_file/" + GeneralUtil.toHexString(hash),
+                Map.of()
+            )))) {
                 versionData = LabrinthGson.GSON.fromJson(reader, Version.class);
             } catch (IOException | JsonSyntaxException e) { // Gson rethrows IOExceptions as JsonSyntaxExceptions
                 SwingUtilities.invokeLater(completionAction);
@@ -380,12 +379,11 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
             modrinthProjectId = versionData.getProjectId();
             SwingUtilities.invokeLater(completionAction);
             final Project projectData;
-            try (Reader reader = new InputStreamReader(SimpleHttp.createUrl(
-                    Superpack.MODRINTH_API_ROOT,
-                    "/project/" + modrinthProjectId,
-                    Map.of()
-                ).openStream())
-            ) {
+            try (Reader reader = new InputStreamReader(SimpleHttp.stream(SimpleHttp.createUrl(
+                Superpack.MODRINTH_API_ROOT,
+                "/project/" + modrinthProjectId,
+                Map.of()
+            )))) {
                 projectData = LabrinthGson.GSON.fromJson(reader, Project.class);
             } catch (IOException | JsonSyntaxException e) { // Gson rethrows IOExceptions as JsonSyntaxExceptions
                 LOGGER.error("Failed to request project information", e);
@@ -542,7 +540,7 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                 digest.reset();
                 long downloadSize;
                 try (InputStream is = new TrackingInputStream(
-                    new DigestInputStream(downloadUrl.openStream(), digest),
+                    new DigestInputStream(SimpleHttp.stream(downloadUrl), digest),
                     read -> SwingUtilities.invokeLater(() -> {
                         singleDownloadBar.setValue(GeneralUtil.clampToInt(read));
                         singleDownloadBar.setString("Downloading file... " + GeneralUtil.getHumanFileSize(read) + " / " + downloadFileSize);

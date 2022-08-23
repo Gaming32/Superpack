@@ -176,7 +176,7 @@ public final class GeneralUtil {
     }
 
     public static String renderMarkdown(String markdown) throws IOException {
-        final URLConnection cnxn = GITHUB_MARKDOWN_URL.openConnection();
+        final URLConnection cnxn = SimpleHttp.request(GITHUB_MARKDOWN_URL);
         cnxn.setDoOutput(true);
         cnxn.setDoInput(true);
         try (
