@@ -104,6 +104,9 @@
             <manifest>
               <mainClass>io.github.gaming32.superpack.Superpack</mainClass>
             </manifest>
+            <manifestEntries>
+              <Multi-Release>true</Multi-Release> <!-- Some of our shaded dependencies are multi-release -->
+            </manifestEntries>
           </archive>
         </configuration>
       </plugin>

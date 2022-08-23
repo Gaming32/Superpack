@@ -27,6 +27,7 @@ public class Superpack {
 
     public static final File DATA_DIR = getDataDir();
     public static final File SETTINGS_FILE = new File(DATA_DIR, "settings.json");
+    public static final File MYPACKS_FILE = new File(DATA_DIR, "mypacks.json");
     public static final File CACHE_DIR = new File(DATA_DIR, "cache");
     public static final File DOWNLOAD_CACHE_DIR = new File(CACHE_DIR, "downloadCache");
     public static final File ICON_CACHE_DIR = new File(CACHE_DIR, "iconCache");
@@ -39,6 +40,13 @@ public class Superpack {
             SuperpackSettings.INSTANCE.copyFrom(new SuperpackSettings());
         }
         saveSettings();
+        try (Reader reader = new FileReader(MYPACKS_FILE, StandardCharsets.UTF_8)) {
+            MyPacks.INSTANCE.copyFromRead(reader);
+        } catch (Exception e) {
+            LOGGER.warn("Failed to load My Packs, using defaults", e);
+            MyPacks.INSTANCE.copyFrom(new MyPacks());
+        }
+        saveMyPacks();
         final OsThemeDetector themeDetector = OsThemeDetector.getDetector();
         if (themeDetector.isDark()) {
             FlatDarkLaf.setup();
@@ -65,6 +73,14 @@ public class Superpack {
             SuperpackSettings.INSTANCE.write(writer);
         } catch (Exception e) {
             LOGGER.error("Failed to save settings", e);
+        }
+    }
+
+    public static void saveMyPacks() {
+        try (Writer writer = new FileWriter(MYPACKS_FILE, StandardCharsets.UTF_8)) {
+            MyPacks.INSTANCE.write(writer);
+        } catch (Exception e) {
+            LOGGER.error("Failed to save My Packs", e);
         }
     }
 

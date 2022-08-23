@@ -294,8 +294,8 @@ public final class ModrinthTab extends JPanel implements HasLogger, Scrollable {
                 ) {
                     results = LabrinthGson.GSON.fromJson(reader, SearchResults.class);
                 } catch (Exception e) {
-                    getLogger().error("Error requesting modpacks", e);
-                    final Timer timer = new Timer(5000, ev -> loadElements(offset, query, onPreComplete));
+                    LOGGER.error("Error requesting modpacks", e);
+                    final Timer timer = new Timer(1000, ev -> loadElements(offset, query, onPreComplete));
                     timer.setRepeats(false);
                     timer.start();
                     return;

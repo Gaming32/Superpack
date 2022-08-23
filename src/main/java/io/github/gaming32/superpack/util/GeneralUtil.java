@@ -5,6 +5,7 @@ import java.awt.Frame;
 import java.awt.Graphics;
 import java.awt.Image;
 import java.awt.image.BufferedImage;
+import java.awt.image.Raster;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -275,11 +276,12 @@ public final class GeneralUtil {
         final int lastSlash = iconUrl.lastIndexOf('/');
         final String lastPathPart = iconUrl.substring(lastSlash + 1);
         if (lastPathPart.startsWith("icon.")) {
+            // This is the project ID. This is ok to use, because if the project ever has its icon updated, the hash will then be used.
             return
                 iconUrl.substring(iconUrl.lastIndexOf('/', lastSlash - 1) + 1, lastSlash) +
-                iconUrl.substring(iconUrl.lastIndexOf('.')); // Extract the icon hash
+                iconUrl.substring(iconUrl.lastIndexOf('.'));
         }
-        return lastPathPart; // This is the project ID. This is ok to use, because if the project ever has its icon updated, the hash will then be used.
+        return lastPathPart; // Use the icon hash
     }
 
     public static void loadProjectIcon(URL iconUrl, Consumer<Image> completionHandler) {
@@ -306,7 +308,12 @@ public final class GeneralUtil {
             }
             try {
                 iconCache.getParentFile().mkdirs();
-                ImageIO.write(toBufferedImage(image), cacheKey.substring(cacheKey.lastIndexOf('.') + 1), iconCache);
+                final BufferedImage bimage = toBufferedImage(image, BufferedImage.TYPE_INT_ARGB);
+                ImageIO.write(
+                    toBufferedImage(bimage, approximateImageType(bimage)),
+                    cacheKey.substring(cacheKey.lastIndexOf('.') + 1),
+                    iconCache
+                );
             } catch (Exception e) {
                 LOGGER.error("Error caching icon " + cacheKey, e);
             }
@@ -314,11 +321,48 @@ public final class GeneralUtil {
         });
     }
 
-    public static BufferedImage toBufferedImage(Image image) {
-        final BufferedImage result = new BufferedImage(image.getWidth(null), image.getHeight(null), BufferedImage.TYPE_4BYTE_ABGR);
+    public static int approximateImageType(BufferedImage image) {
+        if (image.getType() != BufferedImage.TYPE_INT_ARGB && image.getType() != BufferedImage.TYPE_INT_RGB) {
+            return image.getType();
+        }
+        final Raster data = image.getTile(0, 0); // This is the entire image data
+        final int[] pixel = new int[data.getNumBands()];
+        int type = BufferedImage.TYPE_BYTE_GRAY;
+        for (int x = 0, mx = data.getWidth(); x < mx; x++) {
+            for (int y = 0, my = data.getHeight(); y < my; y++) {
+                data.getPixel(x, y, pixel);
+                if (
+                    type == BufferedImage.TYPE_BYTE_GRAY &&
+                    (pixel[0] != pixel[1] ||
+                     pixel[1] != pixel[2] ||
+                     pixel[0] != pixel[2])
+                ) {
+                    type = BufferedImage.TYPE_INT_RGB;
+                }
+                if (pixel.length > 3 && pixel[3] != 255) {
+                    return BufferedImage.TYPE_INT_ARGB;
+                }
+            }
+        }
+        return type;
+    }
+
+    public static BufferedImage toBufferedImage(Image image, int type) {
+        final BufferedImage result = new BufferedImage(image.getWidth(null), image.getHeight(null), type);
         final Graphics g = result.getGraphics();
         g.drawImage(image, 0, 0, null);
         g.dispose();
         return result;
+    }
+
+    /**
+     * @implNote This is implemented with <a href="https://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function">FNV-1a</a>
+     */
+    public static long longHash(byte[] input) {
+        long hash = 0xcbf29ce484222325L;
+        for (byte b : input) {
+            hash = (hash ^ b) * 0x100000001b3L;
+        }
+        return hash != 0L ? hash : -1L;
     }
 }

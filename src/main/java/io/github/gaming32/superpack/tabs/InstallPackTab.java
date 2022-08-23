@@ -48,12 +48,16 @@ import io.github.gaming32.mrpacklib.Mrpack;
 import io.github.gaming32.mrpacklib.Mrpack.EnvCompatibility;
 import io.github.gaming32.mrpacklib.Mrpack.EnvSide;
 import io.github.gaming32.mrpacklib.packindex.PackFile;
+import io.github.gaming32.mrpacklib.packindex.PackIndex;
 import io.github.gaming32.superpack.FileDialogs;
+import io.github.gaming32.superpack.MyPacks;
 import io.github.gaming32.superpack.Superpack;
 import io.github.gaming32.superpack.SuperpackMainFrame;
 import io.github.gaming32.superpack.SuperpackSettings;
+import io.github.gaming32.superpack.MyPacks.Modpack;
 import io.github.gaming32.superpack.labrinth.LabrinthGson;
 import io.github.gaming32.superpack.labrinth.ModrinthId;
+import io.github.gaming32.superpack.labrinth.Project;
 import io.github.gaming32.superpack.labrinth.Version;
 import io.github.gaming32.superpack.util.DisplayErrorMessageMarker;
 import io.github.gaming32.superpack.util.GeneralUtil;
@@ -340,6 +344,27 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                 LOGGER.error("Hashing of " + packFile + " failed", e);
                 return;
             }
+            SwingUtilities.invokeLater(() -> {
+                PackIndex index;
+                try {
+                    index = pack.getPackIndex();
+                } catch (IOException e) {
+                    // Should *never* happen
+                    LOGGER.error("Failed to read pack index while writing My Packs", e);
+                    return;
+                }
+                Modpack savedPack = MyPacks.INSTANCE.getPack(hash);
+                if (savedPack == null) {
+                    savedPack = new Modpack();
+                    savedPack.setHash(hash);
+                }
+                savedPack.setName(index.getName());
+                savedPack.setDescription(index.getSummary());
+                savedPack.setFilename(friendlyName);
+                savedPack.setPath(packFile);
+                MyPacks.INSTANCE.addPack(savedPack);
+                Superpack.saveMyPacks();
+            });
             final Version versionData;
             try (Reader reader = new InputStreamReader(SimpleHttp.createUrl(
                     Superpack.MODRINTH_API_ROOT,
@@ -354,6 +379,24 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
             }
             modrinthProjectId = versionData.getProjectId();
             SwingUtilities.invokeLater(completionAction);
+            final Project projectData;
+            try (Reader reader = new InputStreamReader(SimpleHttp.createUrl(
+                    Superpack.MODRINTH_API_ROOT,
+                    "/project/" + modrinthProjectId,
+                    Map.of()
+                ).openStream())
+            ) {
+                projectData = LabrinthGson.GSON.fromJson(reader, Project.class);
+            } catch (IOException | JsonSyntaxException e) { // Gson rethrows IOExceptions as JsonSyntaxExceptions
+                LOGGER.error("Failed to request project information", e);
+                return;
+            }
+            SwingUtilities.invokeLater(() -> {
+                final Modpack savedPack = MyPacks.INSTANCE.getPack(hash);
+                if (savedPack == null) return; // Shouldn't happen, but better safe than sorry
+                savedPack.setIconUrl(projectData.getIconUrl());
+                Superpack.saveMyPacks();
+            });
         }, "LookupModrinthVersion");
         lookupThread.setDaemon(true);
         lookupThread.start();
