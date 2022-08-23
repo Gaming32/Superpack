@@ -553,9 +553,9 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                     println("      Failed to download " + downloadUrl + ": " + e);
                     continue;
                 }
-                println("      Downloaded " + downloadSize + " bytes");
+                println("      Downloaded " + GeneralUtil.getHumanFileSizeExtended(downloadSize));
                 if (downloadSize != file.getFileSize()) {
-                    println("         ERROR: File size doesn't match! Expected " + file.getFileSize() + " bytes");
+                    println("         ERROR: File size doesn't match! Expected " + GeneralUtil.getHumanFileSizeExtended(file.getFileSize()));
                     continue;
                 }
                 byte[] hash1 = digest.getDigests()[0].digest();
@@ -589,7 +589,11 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                 }
             }
         }
-        println("Downloaded a total of " + totalDownloadSize + " bytes across " + downloadedCount + " files");
+        println(
+            "Downloaded a total of " +
+            GeneralUtil.getHumanFileSizeExtended(totalDownloadSize) +
+            " across " + downloadedCount + " files"
+        );
         SwingUtilities.invokeLater(() -> {
             overallDownloadBar.setValue(overallDownloadBar.getMaximum());
             overallDownloadBar.setString("Downloading files... Done!");

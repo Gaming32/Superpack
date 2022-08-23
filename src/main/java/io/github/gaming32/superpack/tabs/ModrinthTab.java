@@ -531,6 +531,10 @@ public final class ModrinthTab extends JPanel implements HasLogger, Scrollable {
                     body.setEditorKit(JEditorPane.createEditorKitForContentType("text/html"));
                     body.addHyperlinkListener(ev -> {
                         if (ev.getEventType() == HyperlinkEvent.EventType.ACTIVATED) {
+                            if (ev.getURL() == null) {
+                                LOGGER.warn("Swing passed us a null URL!");
+                                return;
+                            }
                             try {
                                 Desktop.getDesktop().browse(ev.getURL().toURI());
                             } catch (Exception e) {

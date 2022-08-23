@@ -145,6 +145,10 @@ public final class GeneralUtil {
         return SIZE_FORMAT.format((double)size / (1L << divisor)) + " " + unit;
     }
 
+    public static String getHumanFileSizeExtended(long size) {
+        return getHumanFileSize(size) + " (" + size + " bytes)";
+    }
+
     public static int clampToInt(long value) {
         if (value > Integer.MAX_VALUE) return Integer.MAX_VALUE;
         if (value < Integer.MIN_VALUE) return Integer.MIN_VALUE;

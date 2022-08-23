@@ -141,7 +141,7 @@ public final class SettingsTab extends JPanel implements HasLogger {
                 // We were superseded by another calculation thread.
                 return;
             }
-            SwingUtilities.invokeLater(() -> cacheSize.setText("Cache size: " + GeneralUtil.getHumanFileSize(size)));
+            SwingUtilities.invokeLater(() -> cacheSize.setText("Cache size: " + GeneralUtil.getHumanFileSizeExtended(size)));
         }, "CalculateCacheSize");
         cacheManageThread.setDaemon(true);
         cacheManageThread.start();

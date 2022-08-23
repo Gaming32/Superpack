@@ -50,7 +50,7 @@ public class TrackingInputStream extends FilterInputStream {
     @Override
     public int read(byte[] b, int off, int len) throws IOException {
         len = in.read(b, off, len);
-        if (len != 0) {
+        if (len > 0) {
             read += len;
             try {
                 handler.accept(read);
@@ -64,7 +64,7 @@ public class TrackingInputStream extends FilterInputStream {
     @Override
     public long skip(long n) throws IOException {
         n = in.skip(n);
-        if (n != 0) {
+        if (n > 0) {
             read += n;
             try {
                 handler.accept(read);
