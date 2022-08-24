@@ -363,6 +363,7 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                 savedPack.setFilename(friendlyName);
                 savedPack.setPath(packFile);
                 MyPacks.INSTANCE.addPack(savedPack);
+                MyPacks.INSTANCE.setDirty();
                 Superpack.saveMyPacks();
             });
             final Version versionData;
@@ -393,6 +394,7 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                 final Modpack savedPack = MyPacks.INSTANCE.getPack(hash);
                 if (savedPack == null) return; // Shouldn't happen, but better safe than sorry
                 savedPack.setIconUrl(projectData.getIconUrl());
+                MyPacks.INSTANCE.setDirty();
                 Superpack.saveMyPacks();
             });
         }, "LookupModrinthVersion");

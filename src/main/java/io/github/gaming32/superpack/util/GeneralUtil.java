@@ -1,6 +1,7 @@
 package io.github.gaming32.superpack.util;
 
 import java.awt.Component;
+import java.awt.Desktop;
 import java.awt.Frame;
 import java.awt.Graphics;
 import java.awt.Image;
@@ -35,16 +36,20 @@ import java.util.stream.LongStream;
 import javax.imageio.ImageIO;
 import javax.swing.AbstractButton;
 import javax.swing.ButtonModel;
+import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
+import javax.swing.filechooser.FileFilter;
+import javax.swing.filechooser.FileNameExtensionFilter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.gson.stream.JsonWriter;
+import com.sun.jna.Platform;
 
 import io.github.gaming32.superpack.Superpack;
 
@@ -368,5 +373,32 @@ public final class GeneralUtil {
             hash = (hash ^ b) * 0x100000001b3L;
         }
         return hash != 0L ? hash : -1L;
+    }
+
+    public static <T extends Component & HasLogger> void browseFileDirectory(T parent, File file) {
+        try {
+            if (Platform.isWindows()) {
+                // AWT's browseFileDirectory doesn't work on Windows, so we need to use the win32 API ourselves
+                WindowsUtil.browseFileDirectory(file);
+                return;
+            }
+            Desktop.getDesktop().browseFileDirectory(file);
+        } catch (UnsupportedOperationException e) {
+            GeneralUtil.onlyShowErrorMessage(parent, "This option is unsupported on your platform");
+        } catch (Exception e) {
+            GeneralUtil.showErrorMessage(parent, "Failed to browse file", e);
+        }
+    }
+
+    public static File appendExtension(File file, FileFilter filter) {
+        if (!(filter instanceof FileNameExtensionFilter)) return file;
+        final String[] extensions = ((FileNameExtensionFilter)filter).getExtensions();
+        if (extensions.length == 0) return file;
+        if (file.getPath().indexOf('.') != -1) return file;
+        return new File(file.getPath() + '.' + extensions[0]);
+    }
+
+    public static File getSelectedSaveFile(JFileChooser fileChooser) {
+        return appendExtension(fileChooser.getSelectedFile(), fileChooser.getFileFilter());
     }
 }

@@ -6,6 +6,7 @@ import java.io.Writer;
 import java.net.URL;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -15,6 +16,7 @@ import java.util.TreeSet;
 import io.github.gaming32.superpack.util.GeneralUtil;
 import lombok.AccessLevel;
 import lombok.Data;
+import lombok.Getter;
 import lombok.Setter;
 
 public final class MyPacks {
@@ -91,8 +93,15 @@ public final class MyPacks {
 
     public static final MyPacks INSTANCE = new MyPacks();
 
+    @Getter
     private final SortedSet<Modpack> packs = new TreeSet<>();
     private Map<ByteArrayHashWrapper, Modpack> lookup = null;
+
+    /**
+     * Flag used to indicate whether the GUI needs updating
+     */
+    @Getter
+    private boolean dirty = false;
 
     public MyPacks() {
     }
@@ -101,8 +110,12 @@ public final class MyPacks {
         this.packs.addAll(packs);
     }
 
-    public SortedSet<Modpack> getPacks() {
-        return packs;
+    public void setDirty() {
+        dirty = true;
+    }
+
+    public void clearDirty() {
+        dirty = false;
     }
 
     private Map<ByteArrayHashWrapper, Modpack> computeLookup() {
@@ -133,6 +146,18 @@ public final class MyPacks {
     public void removePack(Modpack pack) {
         packs.remove(pack);
         computeLookup().remove(pack.getHashWrapper());
+    }
+
+    public boolean removeMissing() {
+        boolean anyMissing = false;
+        final Iterator<Modpack> it = packs.iterator();
+        while (it.hasNext()) {
+            if (!it.next().path.isFile()) {
+                it.remove();
+                anyMissing = true;
+            }
+        }
+        return anyMissing;
     }
 
     public void copyTo(MyPacks other) {

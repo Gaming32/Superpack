@@ -23,7 +23,7 @@ import io.github.gaming32.superpack.SuperpackSettings;
 import io.github.gaming32.superpack.util.GeneralUtil;
 import io.github.gaming32.superpack.util.HasLogger;
 
-public final class SettingsTab extends JPanel implements HasLogger {
+public final class SettingsTab extends JPanel implements HasLogger, SelectedTabHandler {
     public static final Logger LOGGER = LoggerFactory.getLogger(SettingsTab.class);
 
     @SuppressWarnings("unused")
@@ -125,7 +125,7 @@ public final class SettingsTab extends JPanel implements HasLogger {
         }
     }
 
-    public void calculateCacheSize() {
+    private void calculateCacheSize() {
         cacheManageThread = new Thread(() -> {
             long size;
             try {
@@ -150,5 +150,10 @@ public final class SettingsTab extends JPanel implements HasLogger {
     @Override
     public Logger getLogger() {
         return LOGGER;
+    }
+
+    @Override
+    public void onSelected() {
+        calculateCacheSize();
     }
 }
