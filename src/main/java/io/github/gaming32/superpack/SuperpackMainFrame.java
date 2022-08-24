@@ -39,12 +39,11 @@ import io.github.gaming32.superpack.tabs.SelectedTabHandler;
 import io.github.gaming32.superpack.tabs.SettingsTab;
 import io.github.gaming32.superpack.util.GeneralUtil;
 import io.github.gaming32.superpack.util.HasLogger;
-import lombok.val;
 
 public final class SuperpackMainFrame extends JFrame implements HasLogger {
     private static final Logger LOGGER = LoggerFactory.getLogger(SuperpackMainFrame.class);
 
-    private final List<Consumer<String>> iconThemeListeners = new ArrayList<>();
+    public final List<Consumer<String>> iconThemeListeners = new ArrayList<>();
     private final Consumer<Boolean> themeListener = isDark -> SwingUtilities.invokeLater(() -> {
         if (isDark) {
             FlatDarkLaf.setup();
@@ -52,7 +51,7 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
             FlatLightLaf.setup();
         }
         SwingUtilities.updateComponentTreeUI(this);
-        for (val iconListener : iconThemeListeners) {
+        for (final var iconListener : iconThemeListeners) {
             iconListener.accept(isDark ? "/dark" : "/light");
         }
     });
@@ -150,7 +149,7 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
 
         {
             final boolean isDark = themeDetector.isDark();
-            for (val iconListener : iconThemeListeners) {
+            for (final var iconListener : iconThemeListeners) {
                 iconListener.accept(isDark ? "/dark" : "/light");
             }
         }

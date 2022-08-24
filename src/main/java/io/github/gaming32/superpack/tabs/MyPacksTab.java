@@ -6,10 +6,12 @@ import java.awt.Dimension;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Rectangle;
+import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.File;
 import java.io.IOException;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 
@@ -21,6 +23,7 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.Scrollable;
+import javax.swing.SwingConstants;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,9 +57,21 @@ public final class MyPacksTab extends JPanel implements HasLogger, Scrollable, S
     }
 
     private void loadPacks() {
+        final URL hamburgerIcon = MyPacksTab.class.getResource(
+            parent.themeDetector.isDark() ? "/dark/hamburger.png" : "/light/hamburger.png"
+        );
         removeAll();
         for (final Modpack pack : MyPacks.INSTANCE.getPacks()) {
+            final ActionListener installAction = ev -> {
+                try {
+                    parent.openInstallPack(pack.getPath());
+                } catch (Exception e) {
+                    GeneralUtil.showErrorMessage(this, "Failed to open Install Pack", e);
+                }
+            };
+
             final JPopupMenu menu = new JPopupMenu();
+            menu.add("Install").addActionListener(installAction);
             menu.add("Open File Location").addActionListener(ev ->
                 GeneralUtil.browseFileDirectory(this, pack.getPath())
             );
@@ -86,12 +101,8 @@ public final class MyPacksTab extends JPanel implements HasLogger, Scrollable, S
             final JButton button = new JButton();
             final GroupLayout layout = new GroupLayout(button);
             button.setLayout(layout);
-            button.addMouseListener(new MouseAdapter() {
-                @Override
-                public void mouseReleased(MouseEvent e) {
-                    menu.show(e.getComponent(), e.getX(), e.getY());
-                }
-            });
+            button.setComponentPopupMenu(menu);
+            button.addActionListener(installAction);
 
             final JLabel icon = new JLabel(modrinthIcon);
             if (pack.getIconUrl() != null) {
@@ -102,7 +113,7 @@ public final class MyPacksTab extends JPanel implements HasLogger, Scrollable, S
                 });
             }
 
-            final JLabel title = new JLabel(pack.getName());
+            final JLabel title = new JLabel("<html>" + pack.getName() + "</html>");
             title.setFont(title.getFont().deriveFont(24f));
 
             final JLabel description;
@@ -120,15 +131,29 @@ public final class MyPacksTab extends JPanel implements HasLogger, Scrollable, S
                 details.add(description);
             }
 
+            final JButton hamburger = new JButton(new ImageIcon(hamburgerIcon));
+            hamburger.setHorizontalAlignment(SwingConstants.CENTER);
+            hamburger.setFocusPainted(false);
+            hamburger.addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseReleased(MouseEvent e) {
+                    if (e.getButton() == MouseEvent.BUTTON1 || e.getButton() == MouseEvent.BUTTON3) {
+                        menu.show(e.getComponent(), e.getX(), e.getY());
+                    }
+                }
+            });
+
             layout.setAutoCreateGaps(true);
             layout.setAutoCreateContainerGaps(true);
             layout.setHorizontalGroup(layout.createSequentialGroup()
                 .addComponent(icon, THUMBNAIL_SIZE, THUMBNAIL_SIZE, THUMBNAIL_SIZE)
                 .addComponent(details)
+                .addComponent(hamburger, 30, 35, 35)
             );
             layout.setVerticalGroup(layout.createParallelGroup(GroupLayout.Alignment.CENTER)
                 .addComponent(icon, THUMBNAIL_SIZE, THUMBNAIL_SIZE, THUMBNAIL_SIZE)
                 .addComponent(details)
+                .addComponent(hamburger, 30, 35, 35)
             );
             add(button);
         }
