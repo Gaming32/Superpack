@@ -379,7 +379,8 @@ public final class GeneralUtil {
         try {
             if (Platform.isWindows()) {
                 // AWT's browseFileDirectory doesn't work on Windows, so we need to use the win32 API ourselves
-                WindowsUtil.browseFileDirectory(file);
+                // Run in a thread since Explorer blocks if it needs to open a new window
+                new Thread(() -> WindowsUtil.browseFileDirectory(file), "Windows-BrowseFileDirectory").start();
                 return;
             }
             Desktop.getDesktop().browseFileDirectory(file);

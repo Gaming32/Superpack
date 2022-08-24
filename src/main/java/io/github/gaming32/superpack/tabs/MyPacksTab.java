@@ -71,6 +71,17 @@ public final class MyPacksTab extends JPanel implements HasLogger, Scrollable, S
                 }
                 GeneralUtil.browseFileDirectory(this, outputFile);
             });
+            menu.add("Remove").addActionListener(ev -> {
+                MyPacks.INSTANCE.removePack(pack);
+                MyPacks.INSTANCE.setDirty();
+                refresh();
+            });
+            menu.add("Delete From Disk").addActionListener(ev -> {
+                pack.getPath().delete();
+                MyPacks.INSTANCE.removePack(pack);
+                MyPacks.INSTANCE.setDirty();
+                refresh();
+            });
 
             final JButton button = new JButton();
             final GroupLayout layout = new GroupLayout(button);
@@ -153,11 +164,17 @@ public final class MyPacksTab extends JPanel implements HasLogger, Scrollable, S
         return false;
     }
 
-    @Override
-    public void onSelected() {
+    private void refresh() {
+        LOGGER.debug("Maybe refreshing My Packs");
         if (MyPacks.INSTANCE.isDirty()) {
+            LOGGER.info("Refreshing My Packs");
             MyPacks.INSTANCE.clearDirty();
             loadPacks();
         }
+    }
+
+    @Override
+    public void onSelected() {
+        refresh();
     }
 }

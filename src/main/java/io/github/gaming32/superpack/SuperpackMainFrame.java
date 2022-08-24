@@ -139,7 +139,10 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
         tabbedPane.addTab("Settings", new SettingsTab(this));
 
         tabbedPane.addChangeListener(ev -> {
-            final Component component = tabbedPane.getSelectedComponent();
+            Component component = tabbedPane.getSelectedComponent();
+            if (component instanceof JScrollPane) {
+                component = ((JScrollPane)component).getViewport().getView();
+            }
             if (component instanceof SelectedTabHandler) {
                 ((SelectedTabHandler)component).onSelected();
             }
