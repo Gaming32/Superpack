@@ -19,14 +19,12 @@ public final class WindowsUtil {
         void SHParseDisplayName(WString name, Pointer bindingContext, PointerByReference pidl, int sfgaoIn, IntByReference psfgaoOut);
     }
 
-    static {
-        Ole32.INSTANCE.CoInitializeEx(null, Ole32.COINIT_MULTITHREADED);
-    }
-
     private WindowsUtil() {
     }
 
     public static void browseFileDirectory(File file) {
+        Ole32.INSTANCE.CoInitializeEx(null, Ole32.COINIT_MULTITHREADED);
+
         final PointerByReference fileName = new PointerByReference();
         Shell32.INSTANCE.SHParseDisplayName(
             new WString(file.getAbsolutePath()),
