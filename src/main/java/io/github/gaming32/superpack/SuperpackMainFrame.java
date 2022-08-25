@@ -88,13 +88,12 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
 
             @Override
             public void drop(DropTargetDropEvent dtde) {
+                dtde.acceptDrop(DnDConstants.ACTION_COPY);
                 try {
                     @SuppressWarnings("unchecked")
                     final List<File> files = (List<File>)dtde.getTransferable().getTransferData(DataFlavor.javaFileListFlavor);
-                    dtde.acceptDrop(DnDConstants.ACTION_COPY);
                     openInstallPack(files.get(0));
                 } catch (Exception e) {
-                    dtde.rejectDrop();
                     GeneralUtil.showErrorMessage(SuperpackMainFrame.this, "Failed to DnD", e);
                 }
             }
