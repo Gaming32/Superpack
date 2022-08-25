@@ -54,10 +54,7 @@ public final class SuperpackSettings {
         .create();
     public static final SuperpackSettings INSTANCE = new SuperpackSettings();
 
-    private boolean checkForPackOnModrinth = true;
-
     public void copyTo(SuperpackSettings other) {
-        other.checkForPackOnModrinth = checkForPackOnModrinth;
     }
 
     public void copyFrom(SuperpackSettings other) {

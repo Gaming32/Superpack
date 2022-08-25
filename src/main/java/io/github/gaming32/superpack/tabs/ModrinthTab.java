@@ -295,7 +295,7 @@ public final class ModrinthTab extends JPanel implements HasLogger, Scrollable {
                     results = LabrinthGson.GSON.fromJson(reader, SearchResults.class);
                 } catch (Exception e) {
                     LOGGER.error("Error requesting modpacks", e);
-                    final Timer timer = new Timer(1000, ev -> loadElements(offset, query, onPreComplete));
+                    final Timer timer = new Timer(5000, ev -> loadElements(offset, query, onPreComplete));
                     timer.setRepeats(false);
                     timer.start();
                     return;
@@ -448,7 +448,7 @@ public final class ModrinthTab extends JPanel implements HasLogger, Scrollable {
                     if (e instanceof FileNotFoundException) {
                         GeneralUtil.onlyShowErrorMessage(this, "Could not find project " + projectIdOrSlug);
                     } else {
-                        GeneralUtil.onlyShowErrorMessage(this, "Could not load project");
+                        GeneralUtil.onlyShowErrorMessage(this, "Could not load project\n" + e.getLocalizedMessage());
                     }
                     SwingUtilities.invokeLater(() -> GeneralUtil.callAction(backButton));
                     return;
@@ -672,7 +672,7 @@ public final class ModrinthTab extends JPanel implements HasLogger, Scrollable {
                     results = LabrinthGson.GSON.fromJson(reader, Version[].class);
                 } catch (Exception e) {
                     getLogger().error("Error requesting versions", e);
-                    GeneralUtil.onlyShowErrorMessage(this, "Could not load project versions");
+                    GeneralUtil.onlyShowErrorMessage(this, "Could not load project versions\n" + e.getLocalizedMessage());
                     SwingUtilities.invokeLater(() -> GeneralUtil.callAction(backButtonPack));
                     return;
                 }

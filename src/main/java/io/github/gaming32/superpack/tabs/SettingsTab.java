@@ -9,7 +9,6 @@ import javax.swing.BorderFactory;
 import javax.swing.GroupLayout;
 import javax.swing.GroupLayout.Alignment;
 import javax.swing.JButton;
-import javax.swing.JCheckBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
@@ -19,7 +18,6 @@ import org.slf4j.LoggerFactory;
 
 import io.github.gaming32.superpack.Superpack;
 import io.github.gaming32.superpack.SuperpackMainFrame;
-import io.github.gaming32.superpack.SuperpackSettings;
 import io.github.gaming32.superpack.util.GeneralUtil;
 import io.github.gaming32.superpack.util.HasLogger;
 
@@ -38,34 +36,25 @@ public final class SettingsTab extends JPanel implements HasLogger, SelectedTabH
         GridBagConstraints gbc;
         setLayout(new GridBagLayout());
 
-        {
-            final JPanel generalSettings = new JPanel();
+        // {
+        //     final JPanel generalSettings = new JPanel();
 
-            final JCheckBox checkForPackOnModrinth = new JCheckBox("Check for Pack on Modrinth");
-            checkForPackOnModrinth.setSelected(SuperpackSettings.INSTANCE.isCheckForPackOnModrinth());
-            checkForPackOnModrinth.addActionListener(ev -> {
-                SuperpackSettings.INSTANCE.setCheckForPackOnModrinth(checkForPackOnModrinth.isSelected());
-                Superpack.saveSettings();
-            });
+        //     final GroupLayout layout = new GroupLayout(generalSettings);
+        //     generalSettings.setLayout(layout);
+        //     layout.setAutoCreateGaps(true);
+        //     layout.setAutoCreateContainerGaps(true);
+        //     layout.setHorizontalGroup(layout.createParallelGroup()
+        //     );
+        //     layout.setVerticalGroup(layout.createSequentialGroup()
+        //     );
+        //     generalSettings.setBorder(BorderFactory.createTitledBorder("General settings"));
 
-            final GroupLayout layout = new GroupLayout(generalSettings);
-            generalSettings.setLayout(layout);
-            layout.setAutoCreateGaps(true);
-            layout.setAutoCreateContainerGaps(true);
-            layout.setHorizontalGroup(layout.createParallelGroup()
-                .addComponent(checkForPackOnModrinth)
-            );
-            layout.setVerticalGroup(layout.createSequentialGroup()
-                .addComponent(checkForPackOnModrinth)
-            );
-            generalSettings.setBorder(BorderFactory.createTitledBorder("General settings"));
-
-            gbc = new GridBagConstraints();
-            gbc.gridx = 0;
-            gbc.gridy = 0;
-            gbc.insets = new Insets(3, 3, 3, 3);
-            add(generalSettings, gbc);
-        }
+        //     gbc = new GridBagConstraints();
+        //     gbc.gridx = 0;
+        //     gbc.gridy = 0;
+        //     gbc.insets = new Insets(3, 3, 3, 3);
+        //     add(generalSettings, gbc);
+        // }
 
         {
             final JPanel cacheSettings = new JPanel();

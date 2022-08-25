@@ -51,10 +51,9 @@ import io.github.gaming32.mrpacklib.packindex.PackFile;
 import io.github.gaming32.mrpacklib.packindex.PackIndex;
 import io.github.gaming32.superpack.FileDialogs;
 import io.github.gaming32.superpack.MyPacks;
+import io.github.gaming32.superpack.MyPacks.Modpack;
 import io.github.gaming32.superpack.Superpack;
 import io.github.gaming32.superpack.SuperpackMainFrame;
-import io.github.gaming32.superpack.SuperpackSettings;
-import io.github.gaming32.superpack.MyPacks.Modpack;
 import io.github.gaming32.superpack.labrinth.LabrinthGson;
 import io.github.gaming32.superpack.labrinth.ModrinthId;
 import io.github.gaming32.superpack.labrinth.Project;
@@ -156,14 +155,12 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
         populateOptionalCheckboxes();
 
         viewOnModrinthButton = new JButton("View on Modrinth");
-        if (SuperpackSettings.INSTANCE.isCheckForPackOnModrinth()) {
-            viewOnModrinthButton.setEnabled(false);
-            getModrinthProjectId(() -> {
-                if (modrinthProjectId != null) {
-                    viewOnModrinthButton.setEnabled(true);
-                }
-            });
-        }
+        viewOnModrinthButton.setEnabled(false);
+        getModrinthProjectId(() -> {
+            if (modrinthProjectId != null) {
+                viewOnModrinthButton.setEnabled(true);
+            }
+        });
         viewOnModrinthButton.addActionListener(ev -> {
             if (modrinthProjectId == null) {
                 getModrinthProjectId(this::openOnModrinth);
@@ -331,9 +328,7 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
 
     private void getModrinthProjectId(Runnable completionAction) {
         if (modrinthProjectId != null) {
-            if (completionAction != null) {
-                completionAction.run();
-            }
+            completionAction.run();
             return;
         }
         final Thread lookupThread = new Thread(() -> {
