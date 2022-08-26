@@ -1,6 +1,14 @@
 package io.github.gaming32.superpack;
 
 import java.awt.Component;
+import java.awt.datatransfer.DataFlavor;
+import java.awt.dnd.DnDConstants;
+import java.awt.dnd.DropTarget;
+import java.awt.dnd.DropTargetAdapter;
+import java.awt.dnd.DropTargetDragEvent;
+import java.awt.dnd.DropTargetDropEvent;
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
@@ -26,14 +34,16 @@ import io.github.gaming32.superpack.labrinth.ModrinthId;
 import io.github.gaming32.superpack.tabs.ImportTab;
 import io.github.gaming32.superpack.tabs.InstallPackTab;
 import io.github.gaming32.superpack.tabs.ModrinthTab;
+import io.github.gaming32.superpack.tabs.MyPacksTab;
+import io.github.gaming32.superpack.tabs.SelectedTabHandler;
 import io.github.gaming32.superpack.tabs.SettingsTab;
+import io.github.gaming32.superpack.util.GeneralUtil;
 import io.github.gaming32.superpack.util.HasLogger;
-import lombok.val;
 
 public final class SuperpackMainFrame extends JFrame implements HasLogger {
     private static final Logger LOGGER = LoggerFactory.getLogger(SuperpackMainFrame.class);
 
-    private final List<Consumer<String>> iconThemeListeners = new ArrayList<>();
+    public final List<Consumer<String>> iconThemeListeners = new ArrayList<>();
     private final Consumer<Boolean> themeListener = isDark -> SwingUtilities.invokeLater(() -> {
         if (isDark) {
             FlatDarkLaf.setup();
@@ -41,7 +51,7 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
             FlatLightLaf.setup();
         }
         SwingUtilities.updateComponentTreeUI(this);
-        for (val iconListener : iconThemeListeners) {
+        for (final var iconListener : iconThemeListeners) {
             iconListener.accept(isDark ? "/dark" : "/light");
         }
     });
@@ -57,6 +67,37 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
         super(Superpack.APP_NAME);
         this.themeDetector = themeDetector;
         themeDetector.registerListener(themeListener);
+
+        setDropTarget(new DropTarget(this, new DropTargetAdapter() {
+            @Override
+            public void dragEnter(DropTargetDragEvent dtde) {
+                if (!dtde.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
+                    dtde.rejectDrag();
+                    return;
+                }
+                try {
+                    @SuppressWarnings("unchecked")
+                    final List<File> files = (List<File>)dtde.getTransferable().getTransferData(DataFlavor.javaFileListFlavor);
+                    if (files.size() != 1) {
+                        dtde.rejectDrag();
+                    }
+                } catch (Exception e) {
+                    dtde.rejectDrag();
+                }
+            }
+
+            @Override
+            public void drop(DropTargetDropEvent dtde) {
+                dtde.acceptDrop(DnDConstants.ACTION_COPY);
+                try {
+                    @SuppressWarnings("unchecked")
+                    final List<File> files = (List<File>)dtde.getTransferable().getTransferData(DataFlavor.javaFileListFlavor);
+                    openInstallPack(files.get(0));
+                } catch (Exception e) {
+                    GeneralUtil.showErrorMessage(SuperpackMainFrame.this, "Failed to DnD", e);
+                }
+            }
+        }));
 
         tabbedPane = new JXTabbedPane(JTabbedPane.LEFT);
         final AbstractTabRenderer tabRenderer = (AbstractTabRenderer)tabbedPane.getTabRenderer();
@@ -82,19 +123,32 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
                 );
             });
         }
+        {
+            final JScrollPane myPacksTabScroll = new JScrollPane(
+                new MyPacksTab(this),
+                JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
+                JScrollPane.HORIZONTAL_SCROLLBAR_NEVER
+            );
+            myPacksTabScroll.setBorder(BorderFactory.createEmptyBorder());
+            myPacksTabScroll.getVerticalScrollBar().setUnitIncrement(16);
+            tabbedPane.addTab("My Packs", myPacksTabScroll);
+        }
         tabbedPane.addTab("Import from file", new ImportTab(this));
         tabbedPane.addTab("Settings", new SettingsTab(this));
 
         tabbedPane.addChangeListener(ev -> {
-            final Component component = tabbedPane.getSelectedComponent();
-            if (component instanceof SettingsTab) {
-                ((SettingsTab)component).calculateCacheSize();
+            Component component = tabbedPane.getSelectedComponent();
+            if (component instanceof JScrollPane) {
+                component = ((JScrollPane)component).getViewport().getView();
+            }
+            if (component instanceof SelectedTabHandler) {
+                ((SelectedTabHandler)component).onSelected();
             }
         });
 
         {
             final boolean isDark = themeDetector.isDark();
-            for (val iconListener : iconThemeListeners) {
+            for (final var iconListener : iconThemeListeners) {
                 iconListener.accept(isDark ? "/dark" : "/light");
             }
         }
@@ -131,6 +185,10 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
             tabbedPane.addTab("Install Pack", tab);
             tabbedPane.setSelectedIndex(tabbedPane.getTabCount() - 1);
         }
+    }
+
+    public void openInstallPack(File file) throws IOException {
+        openInstallPack(new InstallPackTab(this, file));
     }
 
     public void openOnModrinth(ModrinthId projectId) {

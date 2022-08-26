@@ -38,7 +38,17 @@
     <dependency>
       <groupId>com.github.Dansoftowner</groupId>
       <artifactId>jSystemThemeDetector</artifactId>
-      <version>3.6</version>
+      <version>3.8</version>
+    </dependency>
+    <dependency>
+      <groupId>net.java.dev.jna</groupId>
+      <artifactId>jna</artifactId>
+      <version>5.10.0</version>
+    </dependency>
+    <dependency>
+      <groupId>net.java.dev.jna</groupId>
+      <artifactId>jna-platform</artifactId>
+      <version>5.10.0</version>
     </dependency>
     <dependency>
       <groupId>org.apache.logging.log4j</groupId>
@@ -104,6 +114,12 @@
             <manifest>
               <mainClass>io.github.gaming32.superpack.Superpack</mainClass>
             </manifest>
+            <manifestEntries>
+              <Multi-Release>true</Multi-Release> <!-- Some of our shaded dependencies are multi-release -->
+              <Title>${project.groupId}.${project.artifactId}</Title>
+              <Specification-Title>${project.name}</Specification-Title>
+              <Specification-Version>${project.version}</Specification-Version>
+            </manifestEntries>
           </archive>
         </configuration>
       </plugin>

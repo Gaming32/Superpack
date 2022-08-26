@@ -48,12 +48,15 @@ import io.github.gaming32.mrpacklib.Mrpack;
 import io.github.gaming32.mrpacklib.Mrpack.EnvCompatibility;
 import io.github.gaming32.mrpacklib.Mrpack.EnvSide;
 import io.github.gaming32.mrpacklib.packindex.PackFile;
+import io.github.gaming32.mrpacklib.packindex.PackIndex;
 import io.github.gaming32.superpack.FileDialogs;
+import io.github.gaming32.superpack.MyPacks;
+import io.github.gaming32.superpack.MyPacks.Modpack;
 import io.github.gaming32.superpack.Superpack;
 import io.github.gaming32.superpack.SuperpackMainFrame;
-import io.github.gaming32.superpack.SuperpackSettings;
 import io.github.gaming32.superpack.labrinth.LabrinthGson;
 import io.github.gaming32.superpack.labrinth.ModrinthId;
+import io.github.gaming32.superpack.labrinth.Project;
 import io.github.gaming32.superpack.labrinth.Version;
 import io.github.gaming32.superpack.util.DisplayErrorMessageMarker;
 import io.github.gaming32.superpack.util.GeneralUtil;
@@ -152,14 +155,12 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
         populateOptionalCheckboxes();
 
         viewOnModrinthButton = new JButton("View on Modrinth");
-        if (SuperpackSettings.INSTANCE.isCheckForPackOnModrinth()) {
-            viewOnModrinthButton.setEnabled(false);
-            getModrinthProjectId(() -> {
-                if (modrinthProjectId != null) {
-                    viewOnModrinthButton.setEnabled(true);
-                }
-            });
-        }
+        viewOnModrinthButton.setEnabled(false);
+        getModrinthProjectId(() -> {
+            if (modrinthProjectId != null) {
+                viewOnModrinthButton.setEnabled(true);
+            }
+        });
         viewOnModrinthButton.addActionListener(ev -> {
             if (modrinthProjectId == null) {
                 getModrinthProjectId(this::openOnModrinth);
@@ -327,29 +328,45 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
 
     private void getModrinthProjectId(Runnable completionAction) {
         if (modrinthProjectId != null) {
-            if (completionAction != null) {
-                completionAction.run();
-            }
+            completionAction.run();
             return;
         }
         final Thread lookupThread = new Thread(() -> {
-            final MessageDigest digest;
+            final byte[] hash;
             try {
-                digest = MessageDigest.getInstance("SHA-1");
-                try (InputStream is = new DigestInputStream(new FileInputStream(packFile), digest)) {
-                    GeneralUtil.readAndDiscard(is);
-                }
+                hash = GeneralUtil.sha1(new FileInputStream(packFile));
             } catch (Exception e) {
                 LOGGER.error("Hashing of " + packFile + " failed", e);
                 return;
             }
+            SwingUtilities.invokeLater(() -> {
+                PackIndex index;
+                try {
+                    index = pack.getPackIndex();
+                } catch (IOException e) {
+                    // Should *never* happen
+                    LOGGER.error("Failed to read pack index while writing My Packs", e);
+                    return;
+                }
+                Modpack savedPack = MyPacks.INSTANCE.getPack(hash);
+                if (savedPack == null) {
+                    savedPack = new Modpack();
+                    savedPack.setHash(hash);
+                }
+                savedPack.setName(index.getName());
+                savedPack.setDescription(index.getSummary());
+                savedPack.setFilename(friendlyName);
+                savedPack.setPath(packFile);
+                MyPacks.INSTANCE.addPack(savedPack);
+                MyPacks.INSTANCE.setDirty();
+                Superpack.saveMyPacks();
+            });
             final Version versionData;
-            try (Reader reader = new InputStreamReader(SimpleHttp.createUrl(
-                    Superpack.MODRINTH_API_ROOT,
-                    "/version_file/" + GeneralUtil.toHexString(digest.digest()),
-                    Map.of()
-                ).openStream())
-            ) {
+            try (Reader reader = new InputStreamReader(SimpleHttp.stream(SimpleHttp.createUrl(
+                Superpack.MODRINTH_API_ROOT,
+                "/version_file/" + GeneralUtil.toHexString(hash),
+                Map.of()
+            )))) {
                 versionData = LabrinthGson.GSON.fromJson(reader, Version.class);
             } catch (IOException | JsonSyntaxException e) { // Gson rethrows IOExceptions as JsonSyntaxExceptions
                 SwingUtilities.invokeLater(completionAction);
@@ -357,6 +374,24 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
             }
             modrinthProjectId = versionData.getProjectId();
             SwingUtilities.invokeLater(completionAction);
+            final Project projectData;
+            try (Reader reader = new InputStreamReader(SimpleHttp.stream(SimpleHttp.createUrl(
+                Superpack.MODRINTH_API_ROOT,
+                "/project/" + modrinthProjectId,
+                Map.of()
+            )))) {
+                projectData = LabrinthGson.GSON.fromJson(reader, Project.class);
+            } catch (IOException | JsonSyntaxException e) { // Gson rethrows IOExceptions as JsonSyntaxExceptions
+                LOGGER.error("Failed to request project information", e);
+                return;
+            }
+            SwingUtilities.invokeLater(() -> {
+                final Modpack savedPack = MyPacks.INSTANCE.getPack(hash);
+                if (savedPack == null) return; // Shouldn't happen, but better safe than sorry
+                savedPack.setIconUrl(projectData.getIconUrl());
+                MyPacks.INSTANCE.setDirty();
+                Superpack.saveMyPacks();
+            });
         }, "LookupModrinthVersion");
         lookupThread.setDaemon(true);
         lookupThread.start();
@@ -439,7 +474,7 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
 
         println("\nDownloading files...");
         MultiMessageDigest digest = new MultiMessageDigest(
-            MessageDigest.getInstance("SHA-1"),
+            GeneralUtil.getSha1(),
             MessageDigest.getInstance("SHA-512")
         );
         long totalDownloadSize = 0;
@@ -502,7 +537,7 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                 digest.reset();
                 long downloadSize;
                 try (InputStream is = new TrackingInputStream(
-                    new DigestInputStream(downloadUrl.openStream(), digest),
+                    new DigestInputStream(SimpleHttp.stream(downloadUrl), digest),
                     read -> SwingUtilities.invokeLater(() -> {
                         singleDownloadBar.setValue(GeneralUtil.clampToInt(read));
                         singleDownloadBar.setString("Downloading file... " + GeneralUtil.getHumanFileSize(read) + " / " + downloadFileSize);
@@ -513,9 +548,9 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                     println("      Failed to download " + downloadUrl + ": " + e);
                     continue;
                 }
-                println("      Downloaded " + downloadSize + " bytes");
+                println("      Downloaded " + GeneralUtil.getHumanFileSizeExtended(downloadSize));
                 if (downloadSize != file.getFileSize()) {
-                    println("         ERROR: File size doesn't match! Expected " + file.getFileSize() + " bytes");
+                    println("         ERROR: File size doesn't match! Expected " + GeneralUtil.getHumanFileSizeExtended(file.getFileSize()));
                     continue;
                 }
                 byte[] hash1 = digest.getDigests()[0].digest();
@@ -549,7 +584,11 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                 }
             }
         }
-        println("Downloaded a total of " + totalDownloadSize + " bytes across " + downloadedCount + " files");
+        println(
+            "Downloaded a total of " +
+            GeneralUtil.getHumanFileSizeExtended(totalDownloadSize) +
+            " across " + downloadedCount + " files"
+        );
         SwingUtilities.invokeLater(() -> {
             overallDownloadBar.setValue(overallDownloadBar.getMaximum());
             overallDownloadBar.setString("Downloading files... Done!");

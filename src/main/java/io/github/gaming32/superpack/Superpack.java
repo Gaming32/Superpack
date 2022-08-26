@@ -5,16 +5,20 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.Reader;
 import java.io.Writer;
-import java.util.Locale;
+import java.nio.charset.StandardCharsets;
 
 import javax.swing.SwingUtilities;
 
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.LoggerContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.formdev.flatlaf.FlatDarkLaf;
 import com.formdev.flatlaf.FlatLightLaf;
 import com.jthemedetecor.OsThemeDetector;
+import com.sun.jna.Platform;
 
 import io.github.gaming32.superpack.util.GeneralUtil;
 
@@ -26,43 +30,79 @@ public class Superpack {
 
     public static final File DATA_DIR = getDataDir();
     public static final File SETTINGS_FILE = new File(DATA_DIR, "settings.json");
+    public static final File MYPACKS_FILE = new File(DATA_DIR, "mypacks.json");
     public static final File CACHE_DIR = new File(DATA_DIR, "cache");
     public static final File DOWNLOAD_CACHE_DIR = new File(CACHE_DIR, "downloadCache");
+    public static final File ICON_CACHE_DIR = new File(CACHE_DIR, "iconCache");
 
     public static void main(String[] args) {
-        try (Reader reader = new FileReader(SETTINGS_FILE)) {
+        if (Boolean.getBoolean("superpack.debug")) {
+            final LoggerContext context = LoggerContext.getContext(false);
+            context.getConfiguration().getLoggerConfig(LogManager.ROOT_LOGGER_NAME).setLevel(Level.DEBUG);
+            context.updateLoggers();
+        }
+        LOGGER.debug("If you see this, you're in debug mode :)");
+
+        try (Reader reader = new FileReader(SETTINGS_FILE, StandardCharsets.UTF_8)) {
             SuperpackSettings.INSTANCE.copyFromRead(reader);
         } catch (Exception e) {
             LOGGER.warn("Failed to load settings, using defaults", e);
             SuperpackSettings.INSTANCE.copyFrom(new SuperpackSettings());
         }
         saveSettings();
+
+        try (Reader reader = new FileReader(MYPACKS_FILE, StandardCharsets.UTF_8)) {
+            MyPacks.INSTANCE.copyFromRead(reader);
+        } catch (Exception e) {
+            LOGGER.warn("Failed to load My Packs, using defaults", e);
+            MyPacks.INSTANCE.copyFrom(new MyPacks());
+        }
+        MyPacks.INSTANCE.removeMissing();
+        saveMyPacks();
+
         final OsThemeDetector themeDetector = OsThemeDetector.getDetector();
         if (themeDetector.isDark()) {
             FlatDarkLaf.setup();
         } else {
             FlatLightLaf.setup();
         }
-        SwingUtilities.invokeLater(() -> new SuperpackMainFrame(themeDetector).setVisible(true));
+        SwingUtilities.invokeLater(() -> {
+            final SuperpackMainFrame mainFrame = new SuperpackMainFrame(themeDetector);
+            mainFrame.setVisible(true);
+            if (args.length > 0) {
+                try {
+                    mainFrame.openInstallPack(new File(args[0]));
+                } catch (Exception e) {
+                    GeneralUtil.showErrorMessage(mainFrame, "Failed to open file automatically", e);
+                }
+            }
+        });
     }
 
     private static File getDataDir() {
-        String os = System.getProperty("os.name").toLowerCase(Locale.ROOT);
-        if (os.contains("win")) {
+        if (Platform.isWindows()) {
             return new File(System.getenv("APPDATA"), ".superpack");
         }
-        String home = System.getProperty("user.dir");
-        if (os.contains("mac")) {
+        final String home = System.getProperty("user.dir");
+        if (Platform.isMac()) {
             return new File(home, "Library/Application Support/superpack");
         }
         return new File(home, ".superpack");
     }
 
     public static void saveSettings() {
-        try (Writer writer = new FileWriter(SETTINGS_FILE)) {
+        try (Writer writer = new FileWriter(SETTINGS_FILE, StandardCharsets.UTF_8)) {
             SuperpackSettings.INSTANCE.write(writer);
         } catch (Exception e) {
             LOGGER.error("Failed to save settings", e);
+        }
+    }
+
+    public static void saveMyPacks() {
+        try (Writer writer = new FileWriter(MYPACKS_FILE, StandardCharsets.UTF_8)) {
+            MyPacks.INSTANCE.write(writer);
+        } catch (Exception e) {
+            LOGGER.error("Failed to save My Packs", e);
         }
     }
 

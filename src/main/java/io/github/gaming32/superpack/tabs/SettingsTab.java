@@ -9,7 +9,6 @@ import javax.swing.BorderFactory;
 import javax.swing.GroupLayout;
 import javax.swing.GroupLayout.Alignment;
 import javax.swing.JButton;
-import javax.swing.JCheckBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
@@ -19,11 +18,10 @@ import org.slf4j.LoggerFactory;
 
 import io.github.gaming32.superpack.Superpack;
 import io.github.gaming32.superpack.SuperpackMainFrame;
-import io.github.gaming32.superpack.SuperpackSettings;
 import io.github.gaming32.superpack.util.GeneralUtil;
 import io.github.gaming32.superpack.util.HasLogger;
 
-public final class SettingsTab extends JPanel implements HasLogger {
+public final class SettingsTab extends JPanel implements HasLogger, SelectedTabHandler {
     public static final Logger LOGGER = LoggerFactory.getLogger(SettingsTab.class);
 
     @SuppressWarnings("unused")
@@ -38,34 +36,25 @@ public final class SettingsTab extends JPanel implements HasLogger {
         GridBagConstraints gbc;
         setLayout(new GridBagLayout());
 
-        {
-            final JPanel generalSettings = new JPanel();
+        // {
+        //     final JPanel generalSettings = new JPanel();
 
-            final JCheckBox checkForPackOnModrinth = new JCheckBox("Check for Pack on Modrinth");
-            checkForPackOnModrinth.setSelected(SuperpackSettings.INSTANCE.isCheckForPackOnModrinth());
-            checkForPackOnModrinth.addActionListener(ev -> {
-                SuperpackSettings.INSTANCE.setCheckForPackOnModrinth(checkForPackOnModrinth.isSelected());
-                Superpack.saveSettings();
-            });
+        //     final GroupLayout layout = new GroupLayout(generalSettings);
+        //     generalSettings.setLayout(layout);
+        //     layout.setAutoCreateGaps(true);
+        //     layout.setAutoCreateContainerGaps(true);
+        //     layout.setHorizontalGroup(layout.createParallelGroup()
+        //     );
+        //     layout.setVerticalGroup(layout.createSequentialGroup()
+        //     );
+        //     generalSettings.setBorder(BorderFactory.createTitledBorder("General settings"));
 
-            final GroupLayout layout = new GroupLayout(generalSettings);
-            generalSettings.setLayout(layout);
-            layout.setAutoCreateGaps(true);
-            layout.setAutoCreateContainerGaps(true);
-            layout.setHorizontalGroup(layout.createParallelGroup()
-                .addComponent(checkForPackOnModrinth)
-            );
-            layout.setVerticalGroup(layout.createSequentialGroup()
-                .addComponent(checkForPackOnModrinth)
-            );
-            generalSettings.setBorder(BorderFactory.createTitledBorder("General settings"));
-
-            gbc = new GridBagConstraints();
-            gbc.gridx = 0;
-            gbc.gridy = 0;
-            gbc.insets = new Insets(3, 3, 3, 3);
-            add(generalSettings, gbc);
-        }
+        //     gbc = new GridBagConstraints();
+        //     gbc.gridx = 0;
+        //     gbc.gridy = 0;
+        //     gbc.insets = new Insets(3, 3, 3, 3);
+        //     add(generalSettings, gbc);
+        // }
 
         {
             final JPanel cacheSettings = new JPanel();
@@ -88,7 +77,6 @@ public final class SettingsTab extends JPanel implements HasLogger {
                     try {
                         GeneralUtil.rmdir(Superpack.CACHE_DIR.toPath());
                         Superpack.CACHE_DIR.mkdirs();
-                        Superpack.DOWNLOAD_CACHE_DIR.mkdir();
                         calculateCacheSize();
                     } catch (Exception ioe) {
                         GeneralUtil.showErrorMessage(this, ioe);
@@ -126,7 +114,7 @@ public final class SettingsTab extends JPanel implements HasLogger {
         }
     }
 
-    public void calculateCacheSize() {
+    private void calculateCacheSize() {
         cacheManageThread = new Thread(() -> {
             long size;
             try {
@@ -142,7 +130,7 @@ public final class SettingsTab extends JPanel implements HasLogger {
                 // We were superseded by another calculation thread.
                 return;
             }
-            SwingUtilities.invokeLater(() -> cacheSize.setText("Cache size: " + GeneralUtil.getHumanFileSize(size)));
+            SwingUtilities.invokeLater(() -> cacheSize.setText("Cache size: " + GeneralUtil.getHumanFileSizeExtended(size)));
         }, "CalculateCacheSize");
         cacheManageThread.setDaemon(true);
         cacheManageThread.start();
@@ -151,5 +139,10 @@ public final class SettingsTab extends JPanel implements HasLogger {
     @Override
     public Logger getLogger() {
         return LOGGER;
+    }
+
+    @Override
+    public void onSelected() {
+        calculateCacheSize();
     }
 }
