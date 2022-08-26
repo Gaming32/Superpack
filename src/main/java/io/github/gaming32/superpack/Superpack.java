@@ -50,7 +50,8 @@ public class Superpack {
             SuperpackSettings.INSTANCE.copyFrom(new SuperpackSettings());
         }
         if (SuperpackSettings.INSTANCE.getTheme() == null) {
-            SuperpackSettings.INSTANCE.setTheme(Themes.FLATLAF_SYSTEM);
+            LOGGER.warn("Configured theme was unknown. Falling back to {}.", Themes.DEFAULT.getId());
+            SuperpackSettings.INSTANCE.setTheme(Themes.DEFAULT);
         }
         saveSettings();
 
@@ -63,11 +64,9 @@ public class Superpack {
         MyPacks.INSTANCE.removeMissing();
         saveMyPacks();
 
-        final OsThemeDetector themeDetector = OsThemeDetector.getDetector();
-        final Theme theme = SuperpackSettings.INSTANCE.getTheme();
-        theme.apply(theme.isAffectedBySystem() ? themeDetector.isDark() : false);
+        setTheme(SuperpackSettings.INSTANCE.getTheme());
         SwingUtilities.invokeLater(() -> {
-            final SuperpackMainFrame mainFrame = new SuperpackMainFrame(themeDetector);
+            final SuperpackMainFrame mainFrame = new SuperpackMainFrame(OsThemeDetector.getDetector());
             mainFrame.setVisible(true);
             if (args.length > 0) {
                 try {
@@ -126,5 +125,11 @@ public class Superpack {
     public static boolean isThemeDark() {
         final Theme theme = SuperpackSettings.INSTANCE.getTheme();
         return theme.isAffectedBySystem() ? OsThemeDetector.getDetector().isDark() : theme.isDark();
+    }
+
+    public static void setTheme(Theme theme) {
+        LOGGER.info("Setting theme: {}", theme.getId());
+        SuperpackSettings.INSTANCE.setTheme(theme);
+        theme.apply(isThemeDark());
     }
 }

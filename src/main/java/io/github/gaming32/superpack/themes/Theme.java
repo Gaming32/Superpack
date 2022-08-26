@@ -26,7 +26,7 @@ public abstract class Theme {
 
     /**
      * Whether this theme is affected by system light mode/dark mode. Themes that return false will always be passed
-     * {@code false} to the {@code isDark} parameter of {@link #apply}. Those themes also won't have
+     * the value of {@link #isDark} to the {@code isDark} parameter of {@link #apply}. Those themes also won't have
      * {@link #systemThemeChanged} called on them.
      */
     public boolean isAffectedBySystem() {
@@ -43,5 +43,10 @@ public abstract class Theme {
 
     public void systemThemeChanged(boolean isDark) {
         apply(isDark);
+    }
+
+    @Override
+    public String toString() {
+        return getName();
     }
 }
