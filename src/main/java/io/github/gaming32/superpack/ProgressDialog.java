@@ -17,8 +17,6 @@ import javax.swing.SwingUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.formdev.flatlaf.FlatDarkLaf;
-import com.formdev.flatlaf.FlatLightLaf;
 import com.jthemedetecor.OsThemeDetector;
 
 import io.github.gaming32.superpack.util.HasLogger;
@@ -26,14 +24,14 @@ import io.github.gaming32.superpack.util.HasLogger;
 public final class ProgressDialog extends JDialog implements HasLogger {
     private static final Logger LOGGER = LoggerFactory.getLogger(ProgressDialog.class);
 
-    private final Consumer<Boolean> themeListener = isDark -> SwingUtilities.invokeLater(() -> {
-        if (isDark) {
-            FlatDarkLaf.setup();
-        } else {
-            FlatLightLaf.setup();
+    private final Consumer<Boolean> themeListener = isDark -> {
+        if (SuperpackSettings.INSTANCE.getTheme().isAffectedBySystem()) {
+            SwingUtilities.invokeLater(() -> {
+                SuperpackSettings.INSTANCE.getTheme().systemThemeChanged(isDark);
+                SwingUtilities.updateComponentTreeUI(this);
+            });
         }
-        SwingUtilities.updateComponentTreeUI(this);
-    });
+    };
     private final OsThemeDetector themeDetector;
 
     private final JLabel note;

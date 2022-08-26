@@ -15,11 +15,11 @@ import org.apache.logging.log4j.core.LoggerContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.formdev.flatlaf.FlatDarkLaf;
-import com.formdev.flatlaf.FlatLightLaf;
 import com.jthemedetecor.OsThemeDetector;
 import com.sun.jna.Platform;
 
+import io.github.gaming32.superpack.themes.Theme;
+import io.github.gaming32.superpack.themes.Themes;
 import io.github.gaming32.superpack.util.GeneralUtil;
 
 public class Superpack {
@@ -49,6 +49,9 @@ public class Superpack {
             LOGGER.warn("Failed to load settings, using defaults", e);
             SuperpackSettings.INSTANCE.copyFrom(new SuperpackSettings());
         }
+        if (SuperpackSettings.INSTANCE.getTheme() == null) {
+            SuperpackSettings.INSTANCE.setTheme(Themes.FLATLAF_SYSTEM);
+        }
         saveSettings();
 
         try (Reader reader = new FileReader(MYPACKS_FILE, StandardCharsets.UTF_8)) {
@@ -61,11 +64,8 @@ public class Superpack {
         saveMyPacks();
 
         final OsThemeDetector themeDetector = OsThemeDetector.getDetector();
-        if (themeDetector.isDark()) {
-            FlatDarkLaf.setup();
-        } else {
-            FlatLightLaf.setup();
-        }
+        final Theme theme = SuperpackSettings.INSTANCE.getTheme();
+        theme.apply(theme.isAffectedBySystem() ? themeDetector.isDark() : false);
         SwingUtilities.invokeLater(() -> {
             final SuperpackMainFrame mainFrame = new SuperpackMainFrame(themeDetector);
             mainFrame.setVisible(true);
@@ -121,5 +121,10 @@ public class Superpack {
             return file;
         }
         return null;
+    }
+
+    public static boolean isThemeDark() {
+        final Theme theme = SuperpackSettings.INSTANCE.getTheme();
+        return theme.isAffectedBySystem() ? OsThemeDetector.getDetector().isDark() : theme.isDark();
     }
 }

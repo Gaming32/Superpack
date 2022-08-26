@@ -15,6 +15,8 @@ import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 
 import io.github.gaming32.superpack.labrinth.LabrinthGson;
+import io.github.gaming32.superpack.themes.Theme;
+import io.github.gaming32.superpack.themes.Themes;
 import lombok.Data;
 
 @Data
@@ -51,10 +53,24 @@ public final class SuperpackSettings {
                 return new File(in.nextString());
             }
         }.nullSafe())
+        .registerTypeAdapter(Theme.class, new TypeAdapter<Theme>() {
+            @Override
+            public void write(JsonWriter out, Theme theme) throws IOException {
+                out.value(theme.getId());
+            }
+
+            @Override
+            public Theme read(JsonReader in) throws IOException {
+                return Themes.getTheme(in.nextString());
+            }
+        }.nullSafe())
         .create();
     public static final SuperpackSettings INSTANCE = new SuperpackSettings();
 
+    private Theme theme;
+
     public void copyTo(SuperpackSettings other) {
+        other.theme = theme;
     }
 
     public void copyFrom(SuperpackSettings other) {

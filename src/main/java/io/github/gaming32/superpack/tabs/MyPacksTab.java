@@ -31,6 +31,7 @@ import org.slf4j.LoggerFactory;
 import io.github.gaming32.superpack.FileDialogs;
 import io.github.gaming32.superpack.MyPacks;
 import io.github.gaming32.superpack.MyPacks.Modpack;
+import io.github.gaming32.superpack.Superpack;
 import io.github.gaming32.superpack.SuperpackMainFrame;
 import io.github.gaming32.superpack.util.GeneralUtil;
 import io.github.gaming32.superpack.util.HasLogger;
@@ -58,7 +59,7 @@ public final class MyPacksTab extends JPanel implements HasLogger, Scrollable, S
 
     private void loadPacks() {
         final URL hamburgerIcon = MyPacksTab.class.getResource(
-            parent.themeDetector.isDark() ? "/dark/hamburger.png" : "/light/hamburger.png"
+            Superpack.isThemeDark() ? "/dark/hamburger.png" : "/light/hamburger.png"
         );
         removeAll();
         for (final Modpack pack : MyPacks.INSTANCE.getPacks()) {
