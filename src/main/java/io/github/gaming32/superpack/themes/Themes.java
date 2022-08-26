@@ -59,4 +59,8 @@ public final class Themes {
     public static Theme getTheme(String id) {
         return REGISTERED_THEMES.get(id);
     }
+
+    public static Theme[] getThemes() {
+        return REGISTERED_THEMES.values().toArray(new Theme[REGISTERED_THEMES.size()]);
+    }
 }

@@ -130,6 +130,7 @@ public class Superpack {
     public static void setTheme(Theme theme) {
         LOGGER.info("Setting theme: {}", theme.getId());
         SuperpackSettings.INSTANCE.setTheme(theme);
+        saveSettings();
         theme.apply(isThemeDark());
     }
 }

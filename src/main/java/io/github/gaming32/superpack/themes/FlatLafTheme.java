@@ -34,9 +34,6 @@ final class FlatLafTheme extends Theme {
 
     @Override
     public void apply(boolean isDark) {
-        if (forcedDark != null) {
-            isDark = forcedDark.booleanValue();
-        }
         if (isDark) {
             FlatDarkLaf.setup();
         } else {
