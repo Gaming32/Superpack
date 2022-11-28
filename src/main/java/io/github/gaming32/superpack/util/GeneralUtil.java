@@ -161,7 +161,6 @@ public final class GeneralUtil {
     }
 
     public static void addDocumentListener(JTextField textField, Consumer<DocumentEvent> listener) {
-        // I wish I started this project in Kotlin :/
         textField.getDocument().addDocumentListener(new DocumentListener() {
             @Override
             public void insertUpdate(DocumentEvent e) {

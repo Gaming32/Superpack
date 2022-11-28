@@ -24,8 +24,6 @@ import javax.swing.SwingUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.formdev.flatlaf.FlatDarkLaf;
-import com.formdev.flatlaf.FlatLightLaf;
 import com.jthemedetecor.OsThemeDetector;
 
 import io.github.gaming32.superpack.jxtabbedpane.AbstractTabRenderer;
@@ -44,17 +42,14 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
     private static final Logger LOGGER = LoggerFactory.getLogger(SuperpackMainFrame.class);
 
     public final List<Consumer<String>> iconThemeListeners = new ArrayList<>();
-    private final Consumer<Boolean> themeListener = isDark -> SwingUtilities.invokeLater(() -> {
-        if (isDark) {
-            FlatDarkLaf.setup();
-        } else {
-            FlatLightLaf.setup();
+    private final Consumer<Boolean> themeListener = isDark -> {
+        if (SuperpackSettings.INSTANCE.getTheme().isAffectedBySystem()) {
+            SwingUtilities.invokeLater(() -> {
+                SuperpackSettings.INSTANCE.getTheme().systemThemeChanged(isDark);
+                SwingUtilities.updateComponentTreeUI(this);
+            });
         }
-        SwingUtilities.updateComponentTreeUI(this);
-        for (final var iconListener : iconThemeListeners) {
-            iconListener.accept(isDark ? "/dark" : "/light");
-        }
-    });
+    };
     public final OsThemeDetector themeDetector;
 
     private final JXTabbedPane tabbedPane;
@@ -147,7 +142,7 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
         });
 
         {
-            final boolean isDark = themeDetector.isDark();
+            final boolean isDark = Superpack.isThemeDark();
             for (final var iconListener : iconThemeListeners) {
                 iconListener.accept(isDark ? "/dark" : "/light");
             }

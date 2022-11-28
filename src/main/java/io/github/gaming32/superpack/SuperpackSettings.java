@@ -6,6 +6,9 @@ import java.io.Reader;
 import java.io.Writer;
 import java.util.SortedSet;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.TypeAdapter;
@@ -15,10 +18,14 @@ import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 
 import io.github.gaming32.superpack.labrinth.LabrinthGson;
+import io.github.gaming32.superpack.themes.Theme;
+import io.github.gaming32.superpack.themes.Themes;
 import lombok.Data;
 
 @Data
 public final class SuperpackSettings {
+    private static final Logger LOGGER = LoggerFactory.getLogger(SuperpackSettings.class);
+
     public static final Gson GSON = LabrinthGson.GSON.newBuilder()
         .setFieldNamingPolicy(FieldNamingPolicy.IDENTITY)
         .registerTypeAdapterFactory(new TypeAdapterFactory() {
@@ -51,10 +58,30 @@ public final class SuperpackSettings {
                 return new File(in.nextString());
             }
         }.nullSafe())
+        .registerTypeAdapter(Theme.class, new TypeAdapter<Theme>() {
+            @Override
+            public void write(JsonWriter out, Theme theme) throws IOException {
+                out.value(theme.getId());
+            }
+
+            @Override
+            public Theme read(JsonReader in) throws IOException {
+                final String id = in.nextString();
+                final Theme theme = Themes.getTheme(id);
+                if (theme == null) {
+                    LOGGER.warn("Unknown theme {}", id);
+                    return Themes.DEFAULT;
+                }
+                return theme;
+            }
+        }.nullSafe())
         .create();
     public static final SuperpackSettings INSTANCE = new SuperpackSettings();
 
+    private Theme theme = Themes.DEFAULT;
+
     public void copyTo(SuperpackSettings other) {
+        other.theme = theme;
     }
 
     public void copyFrom(SuperpackSettings other) {
