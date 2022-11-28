@@ -1,6 +1,9 @@
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+
 plugins {
     application
     java
+    kotlin("jvm") version "1.7.22"
     id("io.ktor.plugin") version "2.1.1" // It builds fat JARs
     id("io.freefair.lombok") version "6.6-rc1"
 }
@@ -42,4 +45,8 @@ dependencies {
 
 tasks.withType<JavaCompile>() {
     options.encoding = "UTF-8"
+}
+
+tasks.withType<KotlinCompile> {
+    kotlinOptions.jvmTarget = "11"
 }
