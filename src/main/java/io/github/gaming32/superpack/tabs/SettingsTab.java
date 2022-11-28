@@ -1,23 +1,5 @@
 package io.github.gaming32.superpack.tabs;
 
-import java.awt.Color;
-import java.awt.Desktop;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.Insets;
-
-import javax.swing.BorderFactory;
-import javax.swing.GroupLayout;
-import javax.swing.GroupLayout.Alignment;
-import javax.swing.JButton;
-import javax.swing.JComboBox;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.SwingUtilities;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import io.github.gaming32.superpack.Superpack;
 import io.github.gaming32.superpack.SuperpackMainFrame;
 import io.github.gaming32.superpack.SuperpackSettings;
@@ -25,11 +7,17 @@ import io.github.gaming32.superpack.themes.Theme;
 import io.github.gaming32.superpack.themes.Themes;
 import io.github.gaming32.superpack.util.GeneralUtil;
 import io.github.gaming32.superpack.util.HasLogger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.swing.*;
+import javax.swing.GroupLayout.Alignment;
+import java.awt.*;
 
 public final class SettingsTab extends JPanel implements HasLogger, SelectedTabHandler {
     public static final Logger LOGGER = LoggerFactory.getLogger(SettingsTab.class);
 
-    @SuppressWarnings("unused")
+    @SuppressWarnings({"unused", "FieldCanBeLocal"})
     private final SuperpackMainFrame parent;
 
     private final JLabel cacheSize;
@@ -44,7 +32,7 @@ public final class SettingsTab extends JPanel implements HasLogger, SelectedTabH
         {
             final JPanel generalSettings = new JPanel();
 
-            final JLabel themeWarningLabel = new JLabel("Warning: Theme changes my cause visual issues until a restart");
+            final JLabel themeWarningLabel = new JLabel("Warning: Theme changes may cause visual issues until a restart");
             themeWarningLabel.setForeground(Color.RED);
             themeWarningLabel.setVisible(false);
 
@@ -54,6 +42,7 @@ public final class SettingsTab extends JPanel implements HasLogger, SelectedTabH
             theme.setSelectedItem(SuperpackSettings.INSTANCE.getTheme());
             theme.addActionListener(ev -> {
                 themeWarningLabel.setVisible(true);
+                //noinspection ConstantConditions
                 Superpack.setTheme((Theme)theme.getSelectedItem());
                 SwingUtilities.updateComponentTreeUI(parent);
             });
@@ -105,6 +94,7 @@ public final class SettingsTab extends JPanel implements HasLogger, SelectedTabH
                 cacheManageThread = new Thread(() -> {
                     try {
                         GeneralUtil.rmdir(Superpack.CACHE_DIR.toPath());
+                        //noinspection ResultOfMethodCallIgnored
                         Superpack.CACHE_DIR.mkdirs();
                         calculateCacheSize();
                     } catch (Exception ioe) {
