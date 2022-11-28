@@ -1,2 +1,4 @@
-target
+.gradle/
+.idea/
+build/
 dependency-reduced-pom.xml
