@@ -4,6 +4,7 @@ import com.google.gson.stream.JsonWriter
 import com.sun.jna.Platform
 import io.github.gaming32.superpack.APP_NAME
 import io.github.gaming32.superpack.ICON_CACHE_DIR
+import io.github.gaming32.superpack.util.SimpleHttp.request
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.slf4j.helpers.Util
@@ -124,7 +125,7 @@ fun JTextField.addDocumentListener(listener: Consumer<DocumentEvent>) =
 
 @Throws(IOException::class)
 fun renderMarkdown(markdown: String): String {
-    val cnxn = SimpleHttp.request(GITHUB_MARKDOWN_URL)
+    val cnxn = GITHUB_MARKDOWN_URL.request()
     cnxn.doOutput = true
     cnxn.doInput = true
     OutputStreamWriter(cnxn.getOutputStream(), Charsets.UTF_8).use { writer ->

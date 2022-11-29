@@ -1,13 +1,10 @@
 package io.github.gaming32.superpack.util;
 
-import java.awt.Graphics;
-import java.awt.Graphics2D;
-import java.awt.RenderingHints;
-
-import javax.swing.JTextField;
+import javax.swing.*;
+import java.awt.*;
 
 /**
- * Thanks to https://stackoverflow.com/a/16229082/8840278
+ * Thanks to <a href="https://stackoverflow.com/a/16229082/8840278">this StackOverflow answer</a>
  */
 public class PlaceholderTextField extends JTextField {
     private static final long serialVersionUID = 1L;
