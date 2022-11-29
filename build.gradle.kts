@@ -16,7 +16,7 @@ java.sourceCompatibility = JavaVersion.VERSION_11
 java.targetCompatibility = JavaVersion.VERSION_11
 
 application {
-    mainClass.set("io.github.gaming32.superpack.Main")
+    mainClass.set("io.github.gaming32.superpack.Superpack")
 }
 
 tasks.withType<Jar> {
