@@ -3,10 +3,11 @@ package io.github.gaming32.superpack.tabs;
 import io.github.gaming32.superpack.FileDialogs;
 import io.github.gaming32.superpack.MyPacks;
 import io.github.gaming32.superpack.MyPacks.Modpack;
-import io.github.gaming32.superpack.Superpack;
+import io.github.gaming32.superpack.SuperpackKt;
 import io.github.gaming32.superpack.SuperpackMainFrame;
 import io.github.gaming32.superpack.util.GeneralUtilKt;
 import io.github.gaming32.superpack.util.HasLogger;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,7 +48,7 @@ public final class MyPacksTab extends JPanel implements HasLogger, Scrollable, S
 
     private void loadPacks() {
         final URL hamburgerIcon = MyPacksTab.class.getResource(
-            Superpack.isThemeDark() ? "/dark/hamburger.png" : "/light/hamburger.png"
+            SuperpackKt.isThemeDark() ? "/dark/hamburger.png" : "/light/hamburger.png"
         );
         removeAll();
         for (final Modpack pack : MyPacks.INSTANCE.getPacks()) {
@@ -151,6 +152,7 @@ public final class MyPacksTab extends JPanel implements HasLogger, Scrollable, S
     }
 
     @Override
+    @NotNull
     public Logger getLogger() {
         return LOGGER;
     }

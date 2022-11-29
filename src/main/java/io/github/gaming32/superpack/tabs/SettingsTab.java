@@ -1,12 +1,13 @@
 package io.github.gaming32.superpack.tabs;
 
-import io.github.gaming32.superpack.Superpack;
+import io.github.gaming32.superpack.SuperpackKt;
 import io.github.gaming32.superpack.SuperpackMainFrame;
 import io.github.gaming32.superpack.SuperpackSettings;
 import io.github.gaming32.superpack.themes.Theme;
 import io.github.gaming32.superpack.themes.Themes;
 import io.github.gaming32.superpack.util.GeneralUtilKt;
 import io.github.gaming32.superpack.util.HasLogger;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,7 +44,7 @@ public final class SettingsTab extends JPanel implements HasLogger, SelectedTabH
             theme.addActionListener(ev -> {
                 themeWarningLabel.setVisible(true);
                 //noinspection ConstantConditions
-                Superpack.setTheme((Theme)theme.getSelectedItem());
+                SuperpackKt.setTheme((Theme)theme.getSelectedItem());
                 SwingUtilities.updateComponentTreeUI(parent);
             });
 
@@ -83,7 +84,7 @@ public final class SettingsTab extends JPanel implements HasLogger, SelectedTabH
             final JButton openCache = new JButton("Open cache folder...");
             openCache.addActionListener(e -> {
                 try {
-                    Desktop.getDesktop().open(Superpack.CACHE_DIR);
+                    Desktop.getDesktop().open(SuperpackKt.getCACHE_DIR());
                 } catch (Exception ioe) {
                     GeneralUtilKt.showErrorMessage(this, ioe);
                 }
@@ -93,9 +94,9 @@ public final class SettingsTab extends JPanel implements HasLogger, SelectedTabH
             clearCache.addActionListener(e -> {
                 cacheManageThread = new Thread(() -> {
                     try {
-                        GeneralUtilKt.rmdir(Superpack.CACHE_DIR.toPath());
+                        GeneralUtilKt.rmdir(SuperpackKt.getCACHE_DIR().toPath());
                         //noinspection ResultOfMethodCallIgnored
-                        Superpack.CACHE_DIR.mkdirs();
+                        SuperpackKt.getCACHE_DIR().mkdirs();
                         calculateCacheSize();
                     } catch (Exception ioe) {
                         GeneralUtilKt.showErrorMessage(this, ioe);
@@ -137,7 +138,7 @@ public final class SettingsTab extends JPanel implements HasLogger, SelectedTabH
         cacheManageThread = new Thread(() -> {
             long size;
             try {
-                size = GeneralUtilKt.getDirectorySize(Superpack.CACHE_DIR.toPath());
+                size = GeneralUtilKt.getDirectorySize(SuperpackKt.getCACHE_DIR().toPath());
             } catch (Exception e) {
                 LOGGER.error("Failed to calculate directory size", e);
                 if (cacheManageThread == Thread.currentThread()) {
@@ -156,6 +157,7 @@ public final class SettingsTab extends JPanel implements HasLogger, SelectedTabH
     }
 
     @Override
+    @NotNull
     public Logger getLogger() {
         return LOGGER;
     }

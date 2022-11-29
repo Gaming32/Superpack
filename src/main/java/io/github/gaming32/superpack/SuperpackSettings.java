@@ -1,14 +1,5 @@
 package io.github.gaming32.superpack;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.Reader;
-import java.io.Writer;
-import java.util.SortedSet;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.TypeAdapter;
@@ -16,11 +7,18 @@ import com.google.gson.TypeAdapterFactory;
 import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
-
 import io.github.gaming32.superpack.labrinth.LabrinthGson;
 import io.github.gaming32.superpack.themes.Theme;
 import io.github.gaming32.superpack.themes.Themes;
 import lombok.Data;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.Reader;
+import java.io.Writer;
+import java.util.SortedSet;
 
 @Data
 public final class SuperpackSettings {
@@ -79,6 +77,14 @@ public final class SuperpackSettings {
     public static final SuperpackSettings INSTANCE = new SuperpackSettings();
 
     private Theme theme = Themes.DEFAULT;
+
+    public Theme getTheme() {
+        return theme;
+    }
+
+    public void setTheme(Theme theme) {
+        this.theme = theme;
+    }
 
     public void copyTo(SuperpackSettings other) {
         other.theme = theme;

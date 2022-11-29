@@ -1,18 +1,17 @@
 package io.github.gaming32.superpack.util;
 
+import io.github.gaming32.superpack.SuperpackKt;
+import kotlin.text.Charsets;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.Map;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import io.github.gaming32.superpack.Superpack;
 
 public final class SimpleHttp {
     private static final Logger LOGGER = LoggerFactory.getLogger(SimpleHttp.class);
@@ -20,10 +19,10 @@ public final class SimpleHttp {
     public static final String USER_AGENT;
 
     static {
-        final Package specPackage = Superpack.class.getPackage();
+        final Package specPackage = SuperpackKt.class.getPackage();
         String userAgent = specPackage.getSpecificationTitle() + '/' + specPackage.getSpecificationVersion();
         if (userAgent.equals("null/null")) {
-            userAgent = Superpack.class.getSimpleName() + "/DEBUG";
+            userAgent = SuperpackKt.class.getSimpleName() + "/DEBUG";
         }
         USER_AGENT = userAgent;
     }
@@ -48,13 +47,13 @@ public final class SimpleHttp {
         return buildUrl(new StringBuilder(url), queryParams);
     }
 
-    private static URL buildUrl(StringBuilder url, Map<String, ? extends Object> queryParams) throws MalformedURLException {
+    private static URL buildUrl(StringBuilder url, Map<String, ?> queryParams) throws MalformedURLException {
         if (!queryParams.isEmpty()) {
             url.append('?');
             for (final var entry : queryParams.entrySet()) {
                 url.append(entry.getKey());
                 url.append('=');
-                url.append(URLEncoder.encode(entry.getValue().toString(), StandardCharsets.UTF_8));
+                url.append(URLEncoder.encode(entry.getValue().toString(), Charsets.UTF_8));
                 url.append('&');
             }
             url.setLength(url.length() - 1);

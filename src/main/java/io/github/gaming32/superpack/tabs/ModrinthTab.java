@@ -4,10 +4,12 @@ import io.github.gaming32.mrpacklib.Mrpack.EnvCompatibility;
 import io.github.gaming32.mrpacklib.Mrpack.EnvSide;
 import io.github.gaming32.pipeline.Pipelines;
 import io.github.gaming32.superpack.ProgressDialog;
-import io.github.gaming32.superpack.Superpack;
+import io.github.gaming32.superpack.SuperpackKt;
 import io.github.gaming32.superpack.SuperpackMainFrame;
 import io.github.gaming32.superpack.labrinth.*;
 import io.github.gaming32.superpack.util.*;
+import kotlin.text.Charsets;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,7 +20,6 @@ import java.awt.*;
 import java.io.*;
 import java.net.URI;
 import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.security.DigestInputStream;
@@ -59,6 +60,7 @@ public final class ModrinthTab extends JPanel implements HasLogger, Scrollable {
     }
 
     @Override
+    @NotNull
     public Logger getLogger() {
         return LOGGER;
     }
@@ -210,6 +212,7 @@ public final class ModrinthTab extends JPanel implements HasLogger, Scrollable {
         }
 
         @Override
+        @NotNull
         public Logger getLogger() {
             return LOGGER;
         }
@@ -245,8 +248,8 @@ public final class ModrinthTab extends JPanel implements HasLogger, Scrollable {
                     search.put("query", query);
                 }
                 try (
-                    InputStream is = SimpleHttp.stream(SimpleHttp.createUrl(Superpack.MODRINTH_API_ROOT, "/search", search));
-                    Reader reader = new InputStreamReader(is, StandardCharsets.UTF_8);
+                    InputStream is = SimpleHttp.stream(SimpleHttp.createUrl(SuperpackKt.MODRINTH_API_ROOT, "/search", search));
+                    Reader reader = new InputStreamReader(is, Charsets.UTF_8);
                 ) {
                     results = LabrinthGson.GSON.fromJson(reader, SearchResults.class);
                 } catch (Exception e) {
@@ -363,6 +366,7 @@ public final class ModrinthTab extends JPanel implements HasLogger, Scrollable {
         }
 
         @Override
+        @NotNull
         public Logger getLogger() {
             return LOGGER;
         }
@@ -396,8 +400,8 @@ public final class ModrinthTab extends JPanel implements HasLogger, Scrollable {
             loadingThread = new Thread(() -> {
                 final Project project;
                 try (
-                    InputStream is = SimpleHttp.stream(SimpleHttp.createUrl(Superpack.MODRINTH_API_ROOT, "/project/" + projectIdOrSlug, Map.of()));
-                    Reader reader = new InputStreamReader(is, StandardCharsets.UTF_8);
+                    InputStream is = SimpleHttp.stream(SimpleHttp.createUrl(SuperpackKt.MODRINTH_API_ROOT, "/project/" + projectIdOrSlug, Map.of()));
+                    Reader reader = new InputStreamReader(is, Charsets.UTF_8);
                 ) {
                     project = LabrinthGson.GSON.fromJson(reader, Project.class);
                 } catch (Exception e) {
@@ -595,6 +599,7 @@ public final class ModrinthTab extends JPanel implements HasLogger, Scrollable {
         }
 
         @Override
+        @NotNull
         public Logger getLogger() {
             return LOGGER;
         }
@@ -623,8 +628,8 @@ public final class ModrinthTab extends JPanel implements HasLogger, Scrollable {
                     query.put("featured", true);
                 }
                 try (
-                    InputStream is = SimpleHttp.stream(SimpleHttp.createUrl(Superpack.MODRINTH_API_ROOT, "/project/" + projectIdOrSlug + "/version", query));
-                    Reader reader = new InputStreamReader(is, StandardCharsets.UTF_8);
+                    InputStream is = SimpleHttp.stream(SimpleHttp.createUrl(SuperpackKt.MODRINTH_API_ROOT, "/project/" + projectIdOrSlug + "/version", query));
+                    Reader reader = new InputStreamReader(is, Charsets.UTF_8);
                 ) {
                     results = LabrinthGson.GSON.fromJson(reader, Version[].class);
                 } catch (Exception e) {
@@ -712,7 +717,7 @@ public final class ModrinthTab extends JPanel implements HasLogger, Scrollable {
                                 "Download modpack",
                                 "Downloading " + file.getFilename()
                             );
-                            final File cacheFile = Superpack.getCacheFilePath(file.getHashes().getSha1());
+                            final File cacheFile = SuperpackKt.getCacheFilePath(file.getHashes().getSha1());
                             final Runnable completed = () -> {
                                 progress.setVisible(false);
                                 try {

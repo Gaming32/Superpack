@@ -2,7 +2,8 @@ package io.github.gaming32.superpack.util
 
 import com.google.gson.stream.JsonWriter
 import com.sun.jna.Platform
-import io.github.gaming32.superpack.Superpack
+import io.github.gaming32.superpack.APP_NAME
+import io.github.gaming32.superpack.ICON_CACHE_DIR
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.slf4j.helpers.Util
@@ -11,7 +12,6 @@ import java.awt.image.BufferedImage
 import java.io.*
 import java.net.HttpURLConnection
 import java.net.URL
-import java.nio.charset.StandardCharsets
 import java.nio.file.FileVisitResult
 import java.nio.file.Path
 import java.security.DigestInputStream
@@ -142,12 +142,12 @@ fun renderMarkdown(markdown: String): String {
     }
 }
 
-fun capitalize(s: String) =
-    if (s.isEmpty()) s else s[0].uppercaseChar().toString() + s.substring(1).lowercase()
+fun String.capitalize() =
+    if (isEmpty()) this else this[0].uppercaseChar().toString() + substring(1).lowercase()
 
-fun toHexString(arr: ByteArray): String {
-    val result = StringBuilder(arr.size shl 1)
-    for (v in arr) {
+fun ByteArray.toHexString(): String {
+    val result = StringBuilder(size shl 1)
+    for (v in this) {
         result.append(HEX_CHARS[v.toInt() and 0xff shr 4])
         result.append(HEX_CHARS[v.toInt() and 0xf])
     }
@@ -169,7 +169,7 @@ fun AbstractButton.callAction() {
 }
 
 fun Component.getTitle() =
-    (SwingUtilities.getAncestorOfClass(Frame::class.java, this) as? Frame)?.title ?: Superpack.APP_NAME
+    (SwingUtilities.getAncestorOfClass(Frame::class.java, this) as? Frame)?.title ?: APP_NAME
 
 @Throws(IOException::class)
 fun readAndDiscard(inp: InputStream) {
@@ -185,7 +185,7 @@ fun getSha1(): MessageDigest {
     return digest
 }
 
-fun String.sha1() = toByteArray(StandardCharsets.UTF_8).sha1()
+fun String.sha1() = toByteArray(Charsets.UTF_8).sha1()
 
 fun ByteArray.sha1(): ByteArray = getSha1().digest(this)
 
@@ -219,11 +219,11 @@ fun loadProjectIcon(iconUrl: URL, completionHandler: Consumer<Image?>) {
 }
 
 fun loadProjectIcon(iconUrl: URL): CompletableFuture<Image?> =
-// Swing has its own method of downloading and caching images like this, however that lacks
+    // Swing has its own method of downloading and caching images like this, however that lacks
     // parallelism and blocks while it loads the images.
     IMAGE_CACHE.getFuture(iconUrl.toExternalForm()) { strUrl ->
         val cacheKey = getIconCacheKey(strUrl)
-        val iconCache = File(Superpack.ICON_CACHE_DIR, cacheKey)
+        val iconCache = File(ICON_CACHE_DIR, cacheKey)
         var image: Image?
         try {
             if (iconCache.exists()) {

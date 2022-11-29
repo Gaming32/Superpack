@@ -9,13 +9,14 @@ import io.github.gaming32.mrpacklib.packindex.PackIndex;
 import io.github.gaming32.superpack.FileDialogs;
 import io.github.gaming32.superpack.MyPacks;
 import io.github.gaming32.superpack.MyPacks.Modpack;
-import io.github.gaming32.superpack.Superpack;
+import io.github.gaming32.superpack.SuperpackKt;
 import io.github.gaming32.superpack.SuperpackMainFrame;
 import io.github.gaming32.superpack.labrinth.LabrinthGson;
 import io.github.gaming32.superpack.labrinth.ModrinthId;
 import io.github.gaming32.superpack.labrinth.Project;
 import io.github.gaming32.superpack.labrinth.Version;
 import io.github.gaming32.superpack.util.*;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -83,6 +84,7 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
     }
 
     @Override
+    @NotNull
     public Logger getLogger() {
         return LOGGER;
     }
@@ -330,11 +332,11 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                 savedPack.setPath(packFile);
                 MyPacks.INSTANCE.addPack(savedPack);
                 MyPacks.INSTANCE.setDirty();
-                Superpack.saveMyPacks();
+                SuperpackKt.saveMyPacks();
             });
             final Version versionData;
             try (Reader reader = new InputStreamReader(SimpleHttp.stream(SimpleHttp.createUrl(
-                Superpack.MODRINTH_API_ROOT,
+                SuperpackKt.MODRINTH_API_ROOT,
                 "/version_file/" + GeneralUtilKt.toHexString(hash),
                 Map.of()
             )))) {
@@ -347,7 +349,7 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
             SwingUtilities.invokeLater(completionAction);
             final Project projectData;
             try (Reader reader = new InputStreamReader(SimpleHttp.stream(SimpleHttp.createUrl(
-                Superpack.MODRINTH_API_ROOT,
+                SuperpackKt.MODRINTH_API_ROOT,
                 "/project/" + modrinthProjectId,
                 Map.of()
             )))) {
@@ -361,7 +363,7 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                 if (savedPack == null) return; // Shouldn't happen, but better safe than sorry
                 savedPack.setIconUrl(projectData.getIconUrl());
                 MyPacks.INSTANCE.setDirty();
-                Superpack.saveMyPacks();
+                SuperpackKt.saveMyPacks();
             });
         }, "LookupModrinthVersion");
         lookupThread.setDaemon(true);
@@ -487,7 +489,7 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                     continue;
                 }
             }
-            File cacheFile = Superpack.getCacheFilePath(file.getHashes().get("sha1"));
+            File cacheFile = SuperpackKt.getCacheFilePath(file.getHashes().get("sha1"));
             if (cacheFile.isFile() && cacheFile.length() == file.getFileSize()) {
                 println("   File found in cache at " + cacheFile);
                 Files.copy(cacheFile.toPath(), destPath.toPath(), StandardCopyOption.REPLACE_EXISTING);

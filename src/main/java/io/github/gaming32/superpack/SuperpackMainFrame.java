@@ -7,6 +7,7 @@ import io.github.gaming32.superpack.labrinth.ModrinthId;
 import io.github.gaming32.superpack.tabs.*;
 import io.github.gaming32.superpack.util.GeneralUtilKt;
 import io.github.gaming32.superpack.util.HasLogger;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,7 +42,7 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
     private InstallPackTab installPackTab = null;
 
     public SuperpackMainFrame(OsThemeDetector themeDetector) {
-        super(Superpack.APP_NAME);
+        super(SuperpackKt.APP_NAME);
         this.themeDetector = themeDetector;
         themeDetector.registerListener(themeListener);
 
@@ -125,7 +126,7 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
         });
 
         {
-            final boolean isDark = Superpack.isThemeDark();
+            final boolean isDark = SuperpackKt.isThemeDark();
             for (final var iconListener : iconThemeListeners) {
                 iconListener.accept(isDark ? "/dark" : "/light");
             }
@@ -138,6 +139,7 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
     }
 
     @Override
+    @NotNull
     public Logger getLogger() {
         return LOGGER;
     }
