@@ -40,6 +40,10 @@ private val HEX_CHARS = "0123456789abcdef".toCharArray()
 private val GITHUB_MARKDOWN_URL = URL("https://api.github.com/markdown")
 private val IMAGE_CACHE = SoftCacheMap<String, Image?>()
 
+interface HasLogger {
+    val logger: Logger
+}
+
 fun getLogger(): Logger = LoggerFactory.getLogger(Util.getCallingClass())
 
 fun <T> showErrorMessage(owner: T, t: Throwable) where T : Component, T : HasLogger =
