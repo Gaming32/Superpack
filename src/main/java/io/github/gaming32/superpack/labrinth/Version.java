@@ -1,12 +1,11 @@
 package io.github.gaming32.superpack.labrinth;
 
+import com.google.gson.annotations.SerializedName;
+import io.github.gaming32.superpack.util.GeneralUtilKt;
+import lombok.Data;
+
 import java.net.URL;
 import java.util.Date;
-
-import com.google.gson.annotations.SerializedName;
-
-import io.github.gaming32.superpack.util.GeneralUtil;
-import lombok.Data;
 
 @Data
 public class Version implements HasId {
@@ -26,14 +25,14 @@ public class Version implements HasId {
     private String[] gameVersions;
     private String[] loaders;
 
-    public static enum VersionType {
+    public enum VersionType {
         @SerializedName("release") RELEASE,
         @SerializedName("beta") BETA,
         @SerializedName("alpha") ALPHA;
 
         @Override
         public String toString() {
-            return GeneralUtil.capitalize(name());
+            return GeneralUtilKt.capitalize(name());
         }
     }
 
@@ -59,7 +58,7 @@ public class Version implements HasId {
         private String fileName;
         private DependencyType dependencyType;
 
-        public static enum DependencyType {
+        public enum DependencyType {
             @SerializedName("required") REQUIRED,
             @SerializedName("optional") OPTIONAL,
             @SerializedName("incompatible") INCOMPATIBLE,

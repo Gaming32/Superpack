@@ -5,7 +5,7 @@ import io.github.gaming32.superpack.SuperpackMainFrame;
 import io.github.gaming32.superpack.SuperpackSettings;
 import io.github.gaming32.superpack.themes.Theme;
 import io.github.gaming32.superpack.themes.Themes;
-import io.github.gaming32.superpack.util.GeneralUtil;
+import io.github.gaming32.superpack.util.GeneralUtilKt;
 import io.github.gaming32.superpack.util.HasLogger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -85,7 +85,7 @@ public final class SettingsTab extends JPanel implements HasLogger, SelectedTabH
                 try {
                     Desktop.getDesktop().open(Superpack.CACHE_DIR);
                 } catch (Exception ioe) {
-                    GeneralUtil.showErrorMessage(this, ioe);
+                    GeneralUtilKt.showErrorMessage(this, ioe);
                 }
             });
 
@@ -93,12 +93,12 @@ public final class SettingsTab extends JPanel implements HasLogger, SelectedTabH
             clearCache.addActionListener(e -> {
                 cacheManageThread = new Thread(() -> {
                     try {
-                        GeneralUtil.rmdir(Superpack.CACHE_DIR.toPath());
+                        GeneralUtilKt.rmdir(Superpack.CACHE_DIR.toPath());
                         //noinspection ResultOfMethodCallIgnored
                         Superpack.CACHE_DIR.mkdirs();
                         calculateCacheSize();
                     } catch (Exception ioe) {
-                        GeneralUtil.showErrorMessage(this, ioe);
+                        GeneralUtilKt.showErrorMessage(this, ioe);
                     }
                 });
                 cacheManageThread.setDaemon(true);
@@ -137,7 +137,7 @@ public final class SettingsTab extends JPanel implements HasLogger, SelectedTabH
         cacheManageThread = new Thread(() -> {
             long size;
             try {
-                size = GeneralUtil.getDirectorySize(Superpack.CACHE_DIR.toPath());
+                size = GeneralUtilKt.getDirectorySize(Superpack.CACHE_DIR.toPath());
             } catch (Exception e) {
                 LOGGER.error("Failed to calculate directory size", e);
                 if (cacheManageThread == Thread.currentThread()) {
@@ -149,7 +149,7 @@ public final class SettingsTab extends JPanel implements HasLogger, SelectedTabH
                 // We were superseded by another calculation thread.
                 return;
             }
-            SwingUtilities.invokeLater(() -> cacheSize.setText("Cache size: " + GeneralUtil.getHumanFileSizeExtended(size)));
+            SwingUtilities.invokeLater(() -> cacheSize.setText("Cache size: " + GeneralUtilKt.getHumanFileSizeExtended(size)));
         }, "CalculateCacheSize");
         cacheManageThread.setDaemon(true);
         cacheManageThread.start();

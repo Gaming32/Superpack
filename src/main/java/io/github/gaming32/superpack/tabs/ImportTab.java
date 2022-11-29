@@ -1,28 +1,22 @@
 package io.github.gaming32.superpack.tabs;
 
-import java.awt.Dimension;
-import java.awt.GridBagLayout;
-import java.io.File;
-import java.io.IOException;
-
-import javax.swing.GroupLayout;
-import javax.swing.GroupLayout.Alignment;
-import javax.swing.JButton;
-import javax.swing.JPanel;
-import javax.swing.JTextField;
-
+import io.github.gaming32.superpack.FileDialogs;
+import io.github.gaming32.superpack.SuperpackMainFrame;
+import io.github.gaming32.superpack.util.GeneralUtilKt;
+import io.github.gaming32.superpack.util.HasLogger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.github.gaming32.superpack.FileDialogs;
-import io.github.gaming32.superpack.SuperpackMainFrame;
-import io.github.gaming32.superpack.util.GeneralUtil;
-import io.github.gaming32.superpack.util.HasLogger;
+import javax.swing.*;
+import javax.swing.GroupLayout.Alignment;
+import java.awt.*;
+import java.io.File;
+import java.io.IOException;
 
 public final class ImportTab extends JPanel implements HasLogger {
     public static final Logger LOGGER = LoggerFactory.getLogger(ImportTab.class);
 
-    @SuppressWarnings("unused")
+    @SuppressWarnings({"unused", "FieldCanBeLocal"})
     private final SuperpackMainFrame parent;
 
     public ImportTab(SuperpackMainFrame parent) {
@@ -31,7 +25,7 @@ public final class ImportTab extends JPanel implements HasLogger {
         final JButton[] installPackButtonFR = new JButton[1];
         final JTextField filePathField = new JTextField();
         filePathField.setPreferredSize(new Dimension(500, filePathField.getPreferredSize().height));
-        GeneralUtil.addDocumentListener(filePathField, ev ->
+        GeneralUtilKt.addDocumentListener(filePathField, ev ->
             installPackButtonFR[0].setEnabled(ev.getDocument().getLength() > 0)
         );
 
@@ -49,13 +43,13 @@ public final class ImportTab extends JPanel implements HasLogger {
         installPackButton.addActionListener(ev -> {
             final File packFile = new File(filePathField.getText());
             if (!packFile.exists()) {
-                GeneralUtil.showErrorMessage(this, "Pack file does not exist:\n" + filePathField.getText(), parent.getTitle());
+                GeneralUtilKt.showErrorMessage(this, "Pack file does not exist:\n" + filePathField.getText(), parent.getTitle());
                 return;
             }
             try {
                 parent.openInstallPack(new InstallPackTab(parent, packFile));
             } catch (IOException e) {
-                GeneralUtil.showErrorMessage(this, e);
+                GeneralUtilKt.showErrorMessage(this, e);
             }
         });
 

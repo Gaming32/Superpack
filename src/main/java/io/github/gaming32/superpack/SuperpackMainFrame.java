@@ -1,42 +1,24 @@
 package io.github.gaming32.superpack;
 
-import java.awt.Component;
+import com.jthemedetecor.OsThemeDetector;
+import io.github.gaming32.superpack.jxtabbedpane.AbstractTabRenderer;
+import io.github.gaming32.superpack.jxtabbedpane.JXTabbedPane;
+import io.github.gaming32.superpack.labrinth.ModrinthId;
+import io.github.gaming32.superpack.tabs.*;
+import io.github.gaming32.superpack.util.GeneralUtilKt;
+import io.github.gaming32.superpack.util.HasLogger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.swing.*;
+import java.awt.*;
 import java.awt.datatransfer.DataFlavor;
-import java.awt.dnd.DnDConstants;
-import java.awt.dnd.DropTarget;
-import java.awt.dnd.DropTargetAdapter;
-import java.awt.dnd.DropTargetDragEvent;
-import java.awt.dnd.DropTargetDropEvent;
+import java.awt.dnd.*;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
-
-import javax.swing.BorderFactory;
-import javax.swing.ImageIcon;
-import javax.swing.JFrame;
-import javax.swing.JScrollPane;
-import javax.swing.JTabbedPane;
-import javax.swing.SwingConstants;
-import javax.swing.SwingUtilities;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.jthemedetecor.OsThemeDetector;
-
-import io.github.gaming32.superpack.jxtabbedpane.AbstractTabRenderer;
-import io.github.gaming32.superpack.jxtabbedpane.JXTabbedPane;
-import io.github.gaming32.superpack.labrinth.ModrinthId;
-import io.github.gaming32.superpack.tabs.ImportTab;
-import io.github.gaming32.superpack.tabs.InstallPackTab;
-import io.github.gaming32.superpack.tabs.ModrinthTab;
-import io.github.gaming32.superpack.tabs.MyPacksTab;
-import io.github.gaming32.superpack.tabs.SelectedTabHandler;
-import io.github.gaming32.superpack.tabs.SettingsTab;
-import io.github.gaming32.superpack.util.GeneralUtil;
-import io.github.gaming32.superpack.util.HasLogger;
 
 public final class SuperpackMainFrame extends JFrame implements HasLogger {
     private static final Logger LOGGER = LoggerFactory.getLogger(SuperpackMainFrame.class);
@@ -89,7 +71,7 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
                     final List<File> files = (List<File>)dtde.getTransferable().getTransferData(DataFlavor.javaFileListFlavor);
                     openInstallPack(files.get(0));
                 } catch (Exception e) {
-                    GeneralUtil.showErrorMessage(SuperpackMainFrame.this, "Failed to DnD", e);
+                    GeneralUtilKt.showErrorMessage(SuperpackMainFrame.this, "Failed to DnD", e);
                 }
             }
         }));
@@ -111,6 +93,7 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
             final int modrinthTabIndex = tabbedPane.getTabCount() - 1;
             iconThemeListeners.add(root -> {
                 final String iconPath = root + "/modrinth.png";
+                //noinspection ConstantConditions
                 final ImageIcon icon = new ImageIcon(getClass().getResource(iconPath));
                 tabbedPane.setTabComponentAt(
                     modrinthTabIndex,

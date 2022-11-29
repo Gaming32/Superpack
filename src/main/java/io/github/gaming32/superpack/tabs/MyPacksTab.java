@@ -1,11 +1,17 @@
 package io.github.gaming32.superpack.tabs;
 
-import static io.github.gaming32.superpack.util.GeneralUtil.THUMBNAIL_SIZE;
+import io.github.gaming32.superpack.FileDialogs;
+import io.github.gaming32.superpack.MyPacks;
+import io.github.gaming32.superpack.MyPacks.Modpack;
+import io.github.gaming32.superpack.Superpack;
+import io.github.gaming32.superpack.SuperpackMainFrame;
+import io.github.gaming32.superpack.util.GeneralUtilKt;
+import io.github.gaming32.superpack.util.HasLogger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.awt.Dimension;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.Rectangle;
+import javax.swing.*;
+import java.awt.*;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -15,26 +21,7 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 
-import javax.swing.BoxLayout;
-import javax.swing.GroupLayout;
-import javax.swing.ImageIcon;
-import javax.swing.JButton;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JPopupMenu;
-import javax.swing.Scrollable;
-import javax.swing.SwingConstants;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import io.github.gaming32.superpack.FileDialogs;
-import io.github.gaming32.superpack.MyPacks;
-import io.github.gaming32.superpack.MyPacks.Modpack;
-import io.github.gaming32.superpack.Superpack;
-import io.github.gaming32.superpack.SuperpackMainFrame;
-import io.github.gaming32.superpack.util.GeneralUtil;
-import io.github.gaming32.superpack.util.HasLogger;
+import static io.github.gaming32.superpack.util.GeneralUtilKt.THUMBNAIL_SIZE;
 
 public final class MyPacksTab extends JPanel implements HasLogger, Scrollable, SelectedTabHandler {
     private static final Logger LOGGER = LoggerFactory.getLogger(MyPacksTab.class);
@@ -46,6 +33,7 @@ public final class MyPacksTab extends JPanel implements HasLogger, Scrollable, S
     public MyPacksTab(SuperpackMainFrame parent) {
         this.parent = parent;
 
+        //noinspection ConstantConditions
         modrinthIcon = new ImageIcon(getClass().getResource("/modrinth.png"));
 
         setLayout(new GridBagLayout() {{
@@ -67,14 +55,14 @@ public final class MyPacksTab extends JPanel implements HasLogger, Scrollable, S
                 try {
                     parent.openInstallPack(pack.getPath());
                 } catch (Exception e) {
-                    GeneralUtil.showErrorMessage(this, "Failed to open Install Pack", e);
+                    GeneralUtilKt.showErrorMessage(this, "Failed to open Install Pack", e);
                 }
             };
 
             final JPopupMenu menu = new JPopupMenu();
             menu.add("Install").addActionListener(installAction);
             menu.add("Open File Location").addActionListener(ev ->
-                GeneralUtil.browseFileDirectory(this, pack.getPath())
+                GeneralUtilKt.browseFileDirectory(this, pack.getPath())
             );
             menu.add("Save a Copy").addActionListener(ev -> {
                 final File outputFile = FileDialogs.saveMrpack(this);
@@ -82,10 +70,10 @@ public final class MyPacksTab extends JPanel implements HasLogger, Scrollable, S
                 try {
                     Files.copy(pack.getPath().toPath(), outputFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
                 } catch (IOException e) {
-                    GeneralUtil.showErrorMessage(this, "Failed to copy file", e);
+                    GeneralUtilKt.showErrorMessage(this, "Failed to copy file", e);
                     return;
                 }
-                GeneralUtil.browseFileDirectory(this, outputFile);
+                GeneralUtilKt.browseFileDirectory(this, outputFile);
             });
             menu.add("Remove").addActionListener(ev -> {
                 MyPacks.INSTANCE.removePack(pack);
@@ -93,6 +81,7 @@ public final class MyPacksTab extends JPanel implements HasLogger, Scrollable, S
                 refresh();
             });
             menu.add("Delete From Disk").addActionListener(ev -> {
+                //noinspection ResultOfMethodCallIgnored
                 pack.getPath().delete();
                 MyPacks.INSTANCE.removePack(pack);
                 MyPacks.INSTANCE.setDirty();
@@ -107,7 +96,7 @@ public final class MyPacksTab extends JPanel implements HasLogger, Scrollable, S
 
             final JLabel icon = new JLabel(modrinthIcon);
             if (pack.getIconUrl() != null) {
-                GeneralUtil.loadProjectIcon(pack.getIconUrl(), image -> {
+                GeneralUtilKt.loadProjectIcon(pack.getIconUrl(), image -> {
                     if (image != null) {
                         icon.setIcon(new ImageIcon(image));
                     }
@@ -132,6 +121,7 @@ public final class MyPacksTab extends JPanel implements HasLogger, Scrollable, S
                 details.add(description);
             }
 
+            //noinspection ConstantConditions
             final JButton hamburger = new JButton(new ImageIcon(hamburgerIcon));
             hamburger.setHorizontalAlignment(SwingConstants.CENTER);
             hamburger.setFocusPainted(false);

@@ -1,23 +1,16 @@
 package io.github.gaming32.superpack;
 
-import java.io.File;
-import java.io.Reader;
-import java.io.Writer;
-import java.net.URL;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.SortedSet;
-import java.util.TreeSet;
-
-import io.github.gaming32.superpack.util.GeneralUtil;
+import io.github.gaming32.superpack.util.GeneralUtilKt;
 import lombok.AccessLevel;
 import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
+
+import java.io.File;
+import java.io.Reader;
+import java.io.Writer;
+import java.net.URL;
+import java.util.*;
 
 public final class MyPacks {
     @Data
@@ -39,22 +32,19 @@ public final class MyPacks {
 
         public void setHash(byte[] hash) {
             this.hash = hash;
-            longHash = GeneralUtil.longHash(hash);
+            longHash = GeneralUtilKt.longHash(hash);
         }
 
         public long getLongHash() {
             if (longHash == 0L) {
                 // Possible if hash is set via reflection (i.e. from Gson)
-                return longHash = GeneralUtil.longHash(hash);
+                return longHash = GeneralUtilKt.longHash(hash);
             }
             return longHash;
         }
 
         ByteArrayHashWrapper getHashWrapper() {
-            if (hashWrapper == null) {
-                return hashWrapper = new ByteArrayHashWrapper(this);
-            }
-            return hashWrapper;
+            return Objects.requireNonNullElseGet(hashWrapper, () -> hashWrapper = new ByteArrayHashWrapper(this));
         }
 
         void setHashWrapper(ByteArrayHashWrapper hashWrapper) {
@@ -70,7 +60,7 @@ public final class MyPacks {
 
         ByteArrayHashWrapper(byte[] value) {
             this.value = value;
-            this.longHash = GeneralUtil.longHash(value);
+            this.longHash = GeneralUtilKt.longHash(value);
         }
 
         ByteArrayHashWrapper(Modpack container) {

@@ -1,26 +1,19 @@
 package io.github.gaming32.superpack;
 
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.Reader;
-import java.io.Writer;
-import java.nio.charset.StandardCharsets;
-
-import javax.swing.SwingUtilities;
-
+import com.jthemedetecor.OsThemeDetector;
+import com.sun.jna.Platform;
+import io.github.gaming32.superpack.themes.Theme;
+import io.github.gaming32.superpack.themes.Themes;
+import io.github.gaming32.superpack.util.GeneralUtilKt;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.core.LoggerContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.jthemedetecor.OsThemeDetector;
-import com.sun.jna.Platform;
-
-import io.github.gaming32.superpack.themes.Theme;
-import io.github.gaming32.superpack.themes.Themes;
-import io.github.gaming32.superpack.util.GeneralUtil;
+import javax.swing.*;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
 
 public class Superpack {
     private static final Logger LOGGER = LoggerFactory.getLogger(Superpack.class);
@@ -72,7 +65,7 @@ public class Superpack {
                 try {
                     mainFrame.openInstallPack(new File(args[0]));
                 } catch (Exception e) {
-                    GeneralUtil.showErrorMessage(mainFrame, "Failed to open file automatically", e);
+                    GeneralUtilKt.showErrorMessage(mainFrame, "Failed to open file automatically", e);
                 }
             }
         });
@@ -106,7 +99,7 @@ public class Superpack {
     }
 
     public static File getCacheFilePath(byte[] sha1) {
-        String hash = GeneralUtil.toHexString(sha1);
+        String hash = GeneralUtilKt.toHexString(sha1);
         String path =
             hash.substring(0, 2) + '/' +
             hash.substring(2, 4) + '/' +

@@ -1,12 +1,11 @@
 package io.github.gaming32.superpack;
 
-import java.awt.Component;
-import java.io.File;
+import io.github.gaming32.superpack.util.GeneralUtilKt;
 
-import javax.swing.JFileChooser;
+import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
-
-import io.github.gaming32.superpack.util.GeneralUtil;
+import java.awt.*;
+import java.io.File;
 
 public final class FileDialogs {
     private static final JFileChooser FILE_CHOOSER = new JFileChooser();
@@ -37,7 +36,7 @@ public final class FileDialogs {
         if (FILE_CHOOSER.showSaveDialog(parent) != JFileChooser.APPROVE_OPTION) {
             return null;
         }
-        return GeneralUtil.getSelectedSaveFile(FILE_CHOOSER);
+        return GeneralUtilKt.getSelectedSaveFile(FILE_CHOOSER);
     }
 
     public static File outputDir(Component parent) {

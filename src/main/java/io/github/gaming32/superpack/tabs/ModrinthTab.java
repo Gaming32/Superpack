@@ -1,27 +1,21 @@
 package io.github.gaming32.superpack.tabs;
 
-import static io.github.gaming32.superpack.util.GeneralUtil.THUMBNAIL_SIZE;
+import io.github.gaming32.mrpacklib.Mrpack.EnvCompatibility;
+import io.github.gaming32.mrpacklib.Mrpack.EnvSide;
+import io.github.gaming32.pipeline.Pipelines;
+import io.github.gaming32.superpack.ProgressDialog;
+import io.github.gaming32.superpack.Superpack;
+import io.github.gaming32.superpack.SuperpackMainFrame;
+import io.github.gaming32.superpack.labrinth.*;
+import io.github.gaming32.superpack.util.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Component;
-import java.awt.Cursor;
-import java.awt.Desktop;
-import java.awt.Dimension;
-import java.awt.FlowLayout;
-import java.awt.Font;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.GridLayout;
-import java.awt.Rectangle;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.InterruptedIOException;
-import java.io.Reader;
-import java.io.UncheckedIOException;
+import javax.swing.*;
+import javax.swing.GroupLayout.Alignment;
+import javax.swing.event.HyperlinkEvent;
+import java.awt.*;
+import java.io.*;
 import java.net.URI;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -35,46 +29,7 @@ import java.util.Map;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-import javax.swing.BorderFactory;
-import javax.swing.BoxLayout;
-import javax.swing.GroupLayout;
-import javax.swing.GroupLayout.Alignment;
-import javax.swing.ImageIcon;
-import javax.swing.JButton;
-import javax.swing.JCheckBox;
-import javax.swing.JComboBox;
-import javax.swing.JEditorPane;
-import javax.swing.JLabel;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.OverlayLayout;
-import javax.swing.Scrollable;
-import javax.swing.SwingUtilities;
-import javax.swing.Timer;
-import javax.swing.UIManager;
-import javax.swing.event.HyperlinkEvent;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import io.github.gaming32.mrpacklib.Mrpack.EnvCompatibility;
-import io.github.gaming32.mrpacklib.Mrpack.EnvSide;
-import io.github.gaming32.pipeline.Pipelines;
-import io.github.gaming32.superpack.ProgressDialog;
-import io.github.gaming32.superpack.Superpack;
-import io.github.gaming32.superpack.SuperpackMainFrame;
-import io.github.gaming32.superpack.labrinth.LabrinthGson;
-import io.github.gaming32.superpack.labrinth.ModrinthId;
-import io.github.gaming32.superpack.labrinth.Project;
-import io.github.gaming32.superpack.labrinth.SearchResults;
-import io.github.gaming32.superpack.labrinth.Version;
-import io.github.gaming32.superpack.util.GeneralUtil;
-import io.github.gaming32.superpack.util.HasLogger;
-import io.github.gaming32.superpack.util.MultiMessageDigest;
-import io.github.gaming32.superpack.util.PlaceholderTextField;
-import io.github.gaming32.superpack.util.SimpleHttp;
-import io.github.gaming32.superpack.util.TrackingInputStream;
+import static io.github.gaming32.superpack.util.GeneralUtilKt.THUMBNAIL_SIZE;
 
 public final class ModrinthTab extends JPanel implements HasLogger, Scrollable {
     private static final Logger LOGGER = LoggerFactory.getLogger(ModrinthTab.class);
@@ -91,6 +46,7 @@ public final class ModrinthTab extends JPanel implements HasLogger, Scrollable {
     public ModrinthTab(SuperpackMainFrame parent) {
         this.parent = parent;
 
+        //noinspection ConstantConditions
         placeholderIcon = new ImageIcon(getClass().getResource("/placeholder.png"));
 
         mainList = new MainList();
@@ -203,7 +159,7 @@ public final class ModrinthTab extends JPanel implements HasLogger, Scrollable {
                         }
                     }
                 };
-                GeneralUtil.addDocumentListener(searchField, ev ->
+                GeneralUtilKt.addDocumentListener(searchField, ev ->
                     loadElements(
                         0,
                         ev.getDocument().getLength() == 0 ? null : searchField.getText(),
@@ -308,12 +264,13 @@ public final class ModrinthTab extends JPanel implements HasLogger, Scrollable {
                         button.setLayout(layout);
                         button.addActionListener(ev -> {
                             LOGGER.info("Clicked {}", project.getTitle());
+                            //noinspection ConstantConditions
                             loadProject(project.getId().toString());
                         });
 
                         final JLabel icon = new JLabel(placeholderIcon);
                         if (project.getIconUrl() != null) {
-                            GeneralUtil.loadProjectIcon(project.getIconUrl(), image -> {
+                            GeneralUtilKt.loadProjectIcon(project.getIconUrl(), image -> {
                                 if (image != null) {
                                     icon.setIcon(new ImageIcon(image));
                                 }
@@ -446,11 +403,11 @@ public final class ModrinthTab extends JPanel implements HasLogger, Scrollable {
                 } catch (Exception e) {
                     getLogger().error("Error requesting project", e);
                     if (e instanceof FileNotFoundException) {
-                        GeneralUtil.onlyShowErrorMessage(this, "Could not find project " + projectIdOrSlug);
+                        GeneralUtilKt.onlyShowErrorMessage(this, "Could not find project " + projectIdOrSlug);
                     } else {
-                        GeneralUtil.onlyShowErrorMessage(this, "Could not load project\n" + e.getLocalizedMessage());
+                        GeneralUtilKt.onlyShowErrorMessage(this, "Could not load project\n" + e.getLocalizedMessage());
                     }
-                    SwingUtilities.invokeLater(() -> GeneralUtil.callAction(backButton));
+                    SwingUtilities.invokeLater(() -> GeneralUtilKt.callAction(backButton));
                     return;
                 }
                 LOGGER.info("Received project information for {}", project.getTitle());
@@ -462,7 +419,7 @@ public final class ModrinthTab extends JPanel implements HasLogger, Scrollable {
 
                     final JLabel icon = new JLabel(placeholderIcon);
                     if (project.getIconUrl() != null) {
-                        GeneralUtil.loadProjectIcon(project.getIconUrl(), image -> icon.setIcon(new ImageIcon(image)));
+                        GeneralUtilKt.loadProjectIcon(project.getIconUrl(), image -> icon.setIcon(new ImageIcon(image)));
                     }
                     nameAndIcon.add(icon);
 
@@ -513,7 +470,7 @@ public final class ModrinthTab extends JPanel implements HasLogger, Scrollable {
                         } catch (Exception e) {
                             final String message = "Failed to open " + project.getSlug() + " on Modrinth";
                             LOGGER.error(message, e);
-                            GeneralUtil.onlyShowErrorMessage(this, message);
+                            GeneralUtilKt.onlyShowErrorMessage(this, message);
                         }
                     });
                     actionPanel.add(viewOnModrinth);
@@ -538,7 +495,7 @@ public final class ModrinthTab extends JPanel implements HasLogger, Scrollable {
                             try {
                                 Desktop.getDesktop().browse(ev.getURL().toURI());
                             } catch (Exception e) {
-                                GeneralUtil.showErrorMessage(this, "Failed to open link", e);
+                                GeneralUtilKt.showErrorMessage(this, "Failed to open link", e);
                             }
                         } else if (ev.getEventType() == HyperlinkEvent.EventType.ENTERED) {
                             setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
@@ -557,7 +514,7 @@ public final class ModrinthTab extends JPanel implements HasLogger, Scrollable {
                     loadingThread = new Thread(() -> {
                         final String markdown;
                         try {
-                            markdown = GeneralUtil.renderMarkdown(project.getBody());
+                            markdown = GeneralUtilKt.renderMarkdown(project.getBody());
                         } catch (Exception e) {
                             LOGGER.error("Error rendering body", e);
                             return;
@@ -672,8 +629,8 @@ public final class ModrinthTab extends JPanel implements HasLogger, Scrollable {
                     results = LabrinthGson.GSON.fromJson(reader, Version[].class);
                 } catch (Exception e) {
                     getLogger().error("Error requesting versions", e);
-                    GeneralUtil.onlyShowErrorMessage(this, "Could not load project versions\n" + e.getLocalizedMessage());
-                    SwingUtilities.invokeLater(() -> GeneralUtil.callAction(backButtonPack));
+                    GeneralUtilKt.onlyShowErrorMessage(this, "Could not load project versions\n" + e.getLocalizedMessage());
+                    SwingUtilities.invokeLater(() -> GeneralUtilKt.callAction(backButtonPack));
                     return;
                 }
                 LOGGER.info("Received versions information for {}", projectIdOrSlug);
@@ -722,7 +679,7 @@ public final class ModrinthTab extends JPanel implements HasLogger, Scrollable {
 
                             final JLabel loaders = new JLabel(
                                 Pipelines.iterator(version.getLoaders())
-                                    .map(GeneralUtil::capitalize)
+                                    .map(GeneralUtilKt::capitalize)
                                     .collect(Collectors.joining(", "))
                             );
                             centerPanel.add(loaders);
@@ -743,7 +700,7 @@ public final class ModrinthTab extends JPanel implements HasLogger, Scrollable {
                             rightPanel.setLayout(new BoxLayout(rightPanel, BoxLayout.Y_AXIS));
 
                             rightPanel.add(new JLabel("<html><b>" + version.getDownloads() + "</b> downloads</html>"));
-                            rightPanel.add(new JLabel(GeneralUtil.getHumanFileSize(file.getSize())));
+                            rightPanel.add(new JLabel(GeneralUtilKt.getHumanFileSize(file.getSize())));
 
                             button.add(rightPanel);
                         }
@@ -770,23 +727,23 @@ public final class ModrinthTab extends JPanel implements HasLogger, Scrollable {
                                     }
                                     parent.openInstallPack(dialog);
                                 } catch (IOException e) {
-                                    GeneralUtil.showErrorMessage(this, e);
+                                    GeneralUtilKt.showErrorMessage(this, e);
                                 }
                             };
                             if (!cacheFile.exists() || cacheFile.length() != file.getSize()) {
                                 final Thread downloadThread = new Thread(() -> {
                                     try {
                                         cacheFile.getParentFile().mkdirs();
-                                        final String downloadFileSize = GeneralUtil.getHumanFileSize(file.getSize());
+                                        final String downloadFileSize = GeneralUtilKt.getHumanFileSize(file.getSize());
                                         final URL downloadUrl = file.getUrl();
                                         progress.getLogger().info("Downloading {}", downloadUrl);
                                         SwingUtilities.invokeLater(() -> {
-                                            progress.setMaximum(GeneralUtil.clampToInt(file.getSize()));
+                                            progress.setMaximum(GeneralUtilKt.toIntClamped(file.getSize()));
                                             progress.setProgress(0);
                                             progress.setString("Downloading file... 0 B / " + downloadFileSize);
                                         });
                                         final MultiMessageDigest digest = new MultiMessageDigest(
-                                            GeneralUtil.getSha1(),
+                                            GeneralUtilKt.getSha1(),
                                             MessageDigest.getInstance("SHA-512")
                                         );
                                         long downloadSize;
@@ -795,14 +752,14 @@ public final class ModrinthTab extends JPanel implements HasLogger, Scrollable {
                                             read -> {
                                                 if (progress.cancelled()) {
                                                     final InterruptedIOException e = new InterruptedIOException();
-                                                    e.bytesTransferred = GeneralUtil.clampToInt(read);
+                                                    e.bytesTransferred = GeneralUtilKt.toIntClamped(read);
                                                     throw new UncheckedIOException(e);
                                                 }
                                                 SwingUtilities.invokeLater(() -> {
-                                                    progress.setProgress(GeneralUtil.clampToInt(read));
+                                                    progress.setProgress(GeneralUtilKt.toIntClamped(read));
                                                     progress.setString(
                                                         "Downloading file... " +
-                                                        GeneralUtil.getHumanFileSize(read) +
+                                                        GeneralUtilKt.getHumanFileSize(read) +
                                                         " / " + downloadFileSize
                                                     );
                                                 });
@@ -817,14 +774,14 @@ public final class ModrinthTab extends JPanel implements HasLogger, Scrollable {
                                                 );
                                             } else {
                                                 progress.getLogger().error("Failed to download " + downloadUrl, e);
-                                                GeneralUtil.onlyShowErrorMessage(progress, "Failed to download " + downloadUrl);
+                                                GeneralUtilKt.onlyShowErrorMessage(progress, "Failed to download " + downloadUrl);
                                                 progress.setVisible(false);
                                             }
                                             return;
                                         }
                                         progress.getLogger().info("Downloaded " + downloadSize + " bytes");
                                         if (downloadSize != file.getSize()) {
-                                            GeneralUtil.showErrorMessage(
+                                            GeneralUtilKt.showErrorMessage(
                                                 progress,
                                                 "File size doesn't match! Expected " + file.getSize() + " bytes"
                                             );
@@ -836,10 +793,10 @@ public final class ModrinthTab extends JPanel implements HasLogger, Scrollable {
                                         if (!Arrays.equals(hash1, hash2)) {
                                             progress.getLogger().error(
                                                 "SHA-1 doesn't match! Expected {}, got {}",
-                                                GeneralUtil.toHexString(hash2),
-                                                GeneralUtil.toHexString(hash1)
+                                                GeneralUtilKt.toHexString(hash2),
+                                                GeneralUtilKt.toHexString(hash1)
                                             );
-                                            GeneralUtil.onlyShowErrorMessage(progress, "SHA-1 hash doesn't match!");
+                                            GeneralUtilKt.onlyShowErrorMessage(progress, "SHA-1 hash doesn't match!");
                                             progress.setVisible(false);
                                             return;
                                         }
@@ -848,16 +805,16 @@ public final class ModrinthTab extends JPanel implements HasLogger, Scrollable {
                                         if (!Arrays.equals(hash1, hash2)) {
                                             progress.getLogger().error(
                                                 "SHA-512 doesn't match! Expected {}, got {}",
-                                                GeneralUtil.toHexString(hash2),
-                                                GeneralUtil.toHexString(hash1)
+                                                GeneralUtilKt.toHexString(hash2),
+                                                GeneralUtilKt.toHexString(hash1)
                                             );
-                                            GeneralUtil.onlyShowErrorMessage(progress, "SHA-512 hash doesn't match!");
+                                            GeneralUtilKt.onlyShowErrorMessage(progress, "SHA-512 hash doesn't match!");
                                             progress.setVisible(false);
                                             return;
                                         }
                                         SwingUtilities.invokeLater(completed);
                                     } catch (Exception e) {
-                                        GeneralUtil.showErrorMessage(progress, e);
+                                        GeneralUtilKt.showErrorMessage(progress, e);
                                         progress.setVisible(false);
                                     }
                                 }, "PackDownloader");
