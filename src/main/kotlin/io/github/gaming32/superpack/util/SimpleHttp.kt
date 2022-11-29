@@ -1,6 +1,5 @@
 package io.github.gaming32.superpack.util
 
-import org.slf4j.LoggerFactory
 import java.io.IOException
 import java.net.MalformedURLException
 import java.net.URL
@@ -8,7 +7,8 @@ import java.net.URLConnection
 import java.net.URLEncoder
 
 object SimpleHttp {
-    private val LOGGER = LoggerFactory.getLogger(SimpleHttp::class.java)
+    private val LOGGER = getLogger()
+
     @JvmStatic
     val USER_AGENT: String = run {
         val specPackage = JavaUtil.SUPERPACK_CLASS.`package`

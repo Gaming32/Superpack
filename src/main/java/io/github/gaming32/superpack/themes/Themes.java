@@ -1,18 +1,17 @@
 package io.github.gaming32.superpack.themes;
 
+import io.github.gaming32.superpack.util.GeneralUtilKt;
+import org.jetbrains.annotations.ApiStatus;
+import org.slf4j.Logger;
+
+import javax.swing.*;
+import javax.swing.plaf.metal.MetalLookAndFeel;
+import javax.swing.plaf.nimbus.NimbusLookAndFeel;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import javax.swing.UIManager;
-import javax.swing.plaf.metal.MetalLookAndFeel;
-import javax.swing.plaf.nimbus.NimbusLookAndFeel;
-
-import org.jetbrains.annotations.ApiStatus;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 public final class Themes {
-    private static final Logger LOGGER = LoggerFactory.getLogger(Themes.class);
+    private static final Logger LOGGER = GeneralUtilKt.getLogger();
     private static final Map<String, Theme> REGISTERED_THEMES = new LinkedHashMap<>();
 
     public static final Theme METAL = register(

@@ -18,7 +18,6 @@ import io.github.gaming32.superpack.labrinth.Version;
 import io.github.gaming32.superpack.util.*;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.swing.*;
 import javax.swing.GroupLayout.Alignment;
@@ -39,7 +38,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 public final class InstallPackTab extends JPanel implements HasLogger, AutoCloseable {
-    private static final Logger LOGGER = LoggerFactory.getLogger(InstallPackTab.class);
+    private static final Logger LOGGER = GeneralUtilKt.getLogger();
 
     private final SuperpackMainFrame parent;
     private final File packFile;

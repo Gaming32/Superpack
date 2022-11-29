@@ -9,7 +9,6 @@ import io.github.gaming32.superpack.util.GeneralUtilKt;
 import io.github.gaming32.superpack.util.HasLogger;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.swing.*;
 import java.awt.*;
@@ -22,7 +21,7 @@ import java.util.List;
 import java.util.function.Consumer;
 
 public final class SuperpackMainFrame extends JFrame implements HasLogger {
-    private static final Logger LOGGER = LoggerFactory.getLogger(SuperpackMainFrame.class);
+    private static final Logger LOGGER = GeneralUtilKt.getLogger();
 
     public final List<Consumer<String>> iconThemeListeners = new ArrayList<>();
     private final Consumer<Boolean> themeListener = isDark -> {

@@ -10,9 +10,9 @@ import com.google.gson.stream.JsonWriter;
 import io.github.gaming32.superpack.labrinth.LabrinthGson;
 import io.github.gaming32.superpack.themes.Theme;
 import io.github.gaming32.superpack.themes.Themes;
+import io.github.gaming32.superpack.util.GeneralUtilKt;
 import lombok.Data;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -22,7 +22,7 @@ import java.util.SortedSet;
 
 @Data
 public final class SuperpackSettings {
-    private static final Logger LOGGER = LoggerFactory.getLogger(SuperpackSettings.class);
+    private static final Logger LOGGER = GeneralUtilKt.getLogger();
 
     public static final Gson GSON = LabrinthGson.GSON.newBuilder()
         .setFieldNamingPolicy(FieldNamingPolicy.IDENTITY)

@@ -9,14 +9,13 @@ import io.github.gaming32.superpack.util.GeneralUtilKt;
 import io.github.gaming32.superpack.util.HasLogger;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.swing.*;
 import javax.swing.GroupLayout.Alignment;
 import java.awt.*;
 
 public final class SettingsTab extends JPanel implements HasLogger, SelectedTabHandler {
-    public static final Logger LOGGER = LoggerFactory.getLogger(SettingsTab.class);
+    public static final Logger LOGGER = GeneralUtilKt.getLogger();
 
     @SuppressWarnings({"unused", "FieldCanBeLocal"})
     private final SuperpackMainFrame parent;

@@ -1,28 +1,17 @@
 package io.github.gaming32.superpack;
 
-import java.awt.BorderLayout;
-import java.awt.Frame;
+import com.jthemedetecor.OsThemeDetector;
+import io.github.gaming32.superpack.util.GeneralUtilKt;
+import io.github.gaming32.superpack.util.HasLogger;
+import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+
+import javax.swing.*;
+import java.awt.*;
 import java.util.function.Consumer;
 
-import javax.swing.BorderFactory;
-import javax.swing.Box;
-import javax.swing.BoxLayout;
-import javax.swing.JButton;
-import javax.swing.JDialog;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JProgressBar;
-import javax.swing.SwingUtilities;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.jthemedetecor.OsThemeDetector;
-
-import io.github.gaming32.superpack.util.HasLogger;
-
 public final class ProgressDialog extends JDialog implements HasLogger {
-    private static final Logger LOGGER = LoggerFactory.getLogger(ProgressDialog.class);
+    private static final Logger LOGGER = GeneralUtilKt.getLogger();
 
     private final Consumer<Boolean> themeListener = isDark -> {
         if (SuperpackSettings.INSTANCE.getTheme().isAffectedBySystem()) {
@@ -78,6 +67,7 @@ public final class ProgressDialog extends JDialog implements HasLogger {
     }
 
     @Override
+    @NotNull
     public Logger getLogger() {
         return LOGGER;
     }

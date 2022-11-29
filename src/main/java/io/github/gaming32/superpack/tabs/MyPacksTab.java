@@ -9,7 +9,6 @@ import io.github.gaming32.superpack.util.GeneralUtilKt;
 import io.github.gaming32.superpack.util.HasLogger;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.swing.*;
 import java.awt.*;
@@ -25,7 +24,7 @@ import java.nio.file.StandardCopyOption;
 import static io.github.gaming32.superpack.util.GeneralUtilKt.THUMBNAIL_SIZE;
 
 public final class MyPacksTab extends JPanel implements HasLogger, Scrollable, SelectedTabHandler {
-    private static final Logger LOGGER = LoggerFactory.getLogger(MyPacksTab.class);
+    private static final Logger LOGGER = GeneralUtilKt.getLogger();
 
     private final SuperpackMainFrame parent;
 

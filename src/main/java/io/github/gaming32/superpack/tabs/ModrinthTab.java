@@ -11,7 +11,6 @@ import io.github.gaming32.superpack.util.*;
 import kotlin.text.Charsets;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.swing.*;
 import javax.swing.GroupLayout.Alignment;
@@ -33,7 +32,7 @@ import java.util.stream.Collectors;
 import static io.github.gaming32.superpack.util.GeneralUtilKt.THUMBNAIL_SIZE;
 
 public final class ModrinthTab extends JPanel implements HasLogger, Scrollable {
-    private static final Logger LOGGER = LoggerFactory.getLogger(ModrinthTab.class);
+    private static final Logger LOGGER = GeneralUtilKt.getLogger();
     private static final int PER_PAGE = 50;
 
     private final SuperpackMainFrame parent;
