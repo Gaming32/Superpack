@@ -19,11 +19,23 @@ private val LOGGER = getLogger()
 
 const val APP_NAME = "Superpack"
 const val MODRINTH_API_ROOT = "https://api.modrinth.com/v2/"
+
+@JvmField
 val DATA_DIR = getDataDir()
+
+@JvmField
 val SETTINGS_FILE = File(DATA_DIR, "settings.json")
+
+@JvmField
 val MYPACKS_FILE = File(DATA_DIR, "mypacks.json")
+
+@JvmField
 val CACHE_DIR = File(DATA_DIR, "cache")
+
+@JvmField
 val DOWNLOAD_CACHE_DIR = File(CACHE_DIR, "downloadCache")
+
+@JvmField
 val ICON_CACHE_DIR = File(CACHE_DIR, "iconCache")
 
 fun main(args: Array<String>) {

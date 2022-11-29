@@ -9,7 +9,7 @@ import java.net.URLEncoder
 object SimpleHttp {
     private val LOGGER = getLogger()
 
-    @JvmStatic
+    @JvmField
     val USER_AGENT: String = run {
         val specPackage = JavaUtil.SUPERPACK_CLASS.`package`
         val userAgent = "${specPackage.specificationTitle}/${specPackage.specificationVersion}"

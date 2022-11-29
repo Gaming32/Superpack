@@ -83,7 +83,7 @@ public final class SettingsTab extends JPanel implements HasLogger, SelectedTabH
             final JButton openCache = new JButton("Open cache folder...");
             openCache.addActionListener(e -> {
                 try {
-                    Desktop.getDesktop().open(SuperpackKt.getCACHE_DIR());
+                    Desktop.getDesktop().open(SuperpackKt.CACHE_DIR);
                 } catch (Exception ioe) {
                     GeneralUtilKt.showErrorMessage(this, ioe);
                 }
@@ -93,9 +93,9 @@ public final class SettingsTab extends JPanel implements HasLogger, SelectedTabH
             clearCache.addActionListener(e -> {
                 cacheManageThread = new Thread(() -> {
                     try {
-                        GeneralUtilKt.rmdir(SuperpackKt.getCACHE_DIR().toPath());
+                        GeneralUtilKt.rmdir(SuperpackKt.CACHE_DIR.toPath());
                         //noinspection ResultOfMethodCallIgnored
-                        SuperpackKt.getCACHE_DIR().mkdirs();
+                        SuperpackKt.CACHE_DIR.mkdirs();
                         calculateCacheSize();
                     } catch (Exception ioe) {
                         GeneralUtilKt.showErrorMessage(this, ioe);
@@ -137,7 +137,7 @@ public final class SettingsTab extends JPanel implements HasLogger, SelectedTabH
         cacheManageThread = new Thread(() -> {
             long size;
             try {
-                size = GeneralUtilKt.getDirectorySize(SuperpackKt.getCACHE_DIR().toPath());
+                size = GeneralUtilKt.getDirectorySize(SuperpackKt.CACHE_DIR.toPath());
             } catch (Exception e) {
                 LOGGER.error("Failed to calculate directory size", e);
                 if (cacheManageThread == Thread.currentThread()) {
