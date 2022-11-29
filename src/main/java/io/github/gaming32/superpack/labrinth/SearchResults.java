@@ -1,12 +1,12 @@
 package io.github.gaming32.superpack.labrinth;
 
-import java.net.URL;
-import java.util.Date;
-
 import com.google.gson.annotations.JsonAdapter;
-
 import io.github.gaming32.mrpacklib.Mrpack.EnvCompatibility;
 import lombok.Data;
+
+import java.net.URL;
+import java.util.Date;
+import java.util.List;
 
 @Data
 public class SearchResults {
@@ -23,9 +23,9 @@ public class SearchResults {
         private String author;
         private String title;
         private String description;
-        private String[] categories;
-        private String[] displayCategories;
-        private String[] versions;
+        private List<String> categories;
+        private List<String> displayCategories;
+        private List<String> versions;
         private int downloads;
         private int follows;
         @JsonAdapter(LabrinthGson.EmptyMeansNullUrl.class)
