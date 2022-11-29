@@ -2,19 +2,23 @@ package io.github.gaming32.superpack.themes;
 
 import com.formdev.flatlaf.FlatDarculaLaf;
 import com.formdev.flatlaf.FlatIntelliJLaf;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 final class IntelliJTheme extends Theme {
+    @Nullable
     private final Boolean forcedDark;
 
-    IntelliJTheme(Boolean forcedDark) {
+    IntelliJTheme(@Nullable Boolean forcedDark) {
         this.forcedDark = forcedDark;
     }
 
     @Override
+    @NotNull
     public String getId() {
         if (forcedDark == null) {
             return "intellij-system";
-        } else if (forcedDark.booleanValue()) {
+        } else if (forcedDark) {
             return "darcula";
         } else {
             return "intellij-light";
@@ -22,10 +26,11 @@ final class IntelliJTheme extends Theme {
     }
 
     @Override
+    @NotNull
     public String getName() {
         if (forcedDark == null) {
             return "IntelliJ System";
-        } else if (forcedDark.booleanValue()) {
+        } else if (forcedDark) {
             return "Darcula";
         } else {
             return "IntelliJ Light";
@@ -48,7 +53,6 @@ final class IntelliJTheme extends Theme {
 
     @Override
     public boolean isDark() {
-        // This should never be called when forcedDark == null
-        return forcedDark.booleanValue();
+        return Boolean.TRUE.equals(forcedDark);
     }
 }

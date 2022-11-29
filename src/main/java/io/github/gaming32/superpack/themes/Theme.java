@@ -1,9 +1,12 @@
 package io.github.gaming32.superpack.themes;
 
+import org.jetbrains.annotations.NotNull;
+
 public abstract class Theme {
+    @NotNull
     private final String id;
 
-    protected Theme(String id) {
+    protected Theme(@NotNull String id) {
         this.id = id;
     }
 
@@ -11,13 +14,15 @@ public abstract class Theme {
      * Initializes a theme without an ID. Callers are expected to override {@link #getId}
      */
     protected Theme() {
-        id = null;
+        id = "";
     }
 
+    @NotNull
     public String getId() {
         return id;
     }
 
+    @NotNull
     public String getName() {
         return getId();
     }
@@ -46,6 +51,7 @@ public abstract class Theme {
     }
 
     @Override
+    @NotNull
     public String toString() {
         return getName();
     }

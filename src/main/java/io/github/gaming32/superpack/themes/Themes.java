@@ -48,6 +48,10 @@ public final class Themes {
     }
 
     public static Theme register(Theme theme) {
+        //noinspection ConstantConditions
+        if (theme.getId() == null || theme.getId().isEmpty()) {
+            throw new IllegalArgumentException("Theme ID must be set.");
+        }
         final Theme duplicateTheme;
         if ((duplicateTheme = REGISTERED_THEMES.put(theme.getId(), theme)) != null) {
             LOGGER.warn("Duplicate themes for id {}: {} and {}", theme.getId(), duplicateTheme, theme);

@@ -2,19 +2,23 @@ package io.github.gaming32.superpack.themes;
 
 import com.formdev.flatlaf.FlatDarkLaf;
 import com.formdev.flatlaf.FlatLightLaf;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 final class FlatLafTheme extends Theme {
+    @Nullable
     private final Boolean forcedDark;
 
-    FlatLafTheme(Boolean forcedDark) {
+    FlatLafTheme(@Nullable Boolean forcedDark) {
         this.forcedDark = forcedDark;
     }
 
     @Override
+    @NotNull
     public String getId() {
         if (forcedDark == null) {
             return "flatlaf-system";
-        } else if (forcedDark.booleanValue()) {
+        } else if (forcedDark) {
             return "flatlaf-dark";
         } else {
             return "flatlaf-light";
@@ -22,10 +26,11 @@ final class FlatLafTheme extends Theme {
     }
 
     @Override
+    @NotNull
     public String getName() {
         if (forcedDark == null) {
             return "FlatLaf System";
-        } else if (forcedDark.booleanValue()) {
+        } else if (forcedDark) {
             return "FlatLaf Dark";
         } else {
             return "FlatLaf Light";
@@ -49,6 +54,6 @@ final class FlatLafTheme extends Theme {
     @Override
     public boolean isDark() {
         // This should never be called when forcedDark == null
-        return forcedDark.booleanValue();
+        return Boolean.TRUE.equals(forcedDark);
     }
 }

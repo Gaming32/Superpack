@@ -1,7 +1,8 @@
 package io.github.gaming32.superpack.themes;
 
-import javax.swing.LookAndFeel;
-import javax.swing.UIManager;
+import org.jetbrains.annotations.NotNull;
+
+import javax.swing.*;
 
 public class SimpleClassTheme extends Theme {
     private final String className;
@@ -31,7 +32,7 @@ public class SimpleClassTheme extends Theme {
     }
 
     @Override
-    public String getName() {
+    public @NotNull String getName() {
         return name != null ? name : getId(); // getId() may be overriden
     }
 
