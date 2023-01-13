@@ -320,4 +320,4 @@ fun appendExtension(file: File, filter: FileFilter): File {
     return if (file.path.indexOf('.') != -1) file else File(file.path + '.' + extensions[0])
 }
 
-fun JFileChooser.getSelectedSaveFile() = appendExtension(selectedFile, fileFilter)
+val JFileChooser.selectedSaveFile get() = appendExtension(selectedFile, fileFilter)
