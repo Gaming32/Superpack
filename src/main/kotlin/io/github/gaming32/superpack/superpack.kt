@@ -7,9 +7,6 @@ import io.github.gaming32.superpack.themes.Themes
 import io.github.gaming32.superpack.util.getLogger
 import io.github.gaming32.superpack.util.showErrorMessage
 import io.github.gaming32.superpack.util.toHexString
-import org.apache.logging.log4j.Level
-import org.apache.logging.log4j.LogManager
-import org.apache.logging.log4j.core.LoggerContext
 import java.io.File
 import java.io.FileReader
 import java.io.FileWriter
@@ -39,11 +36,6 @@ val DOWNLOAD_CACHE_DIR = File(CACHE_DIR, "downloadCache")
 val ICON_CACHE_DIR = File(CACHE_DIR, "iconCache")
 
 fun main(args: Array<String>) {
-    if (System.getProperty("superpack.debug")?.toBoolean() == true) {
-        val context = LoggerContext.getContext(false)
-        context.configuration.getLoggerConfig(LogManager.ROOT_LOGGER_NAME).level = Level.DEBUG
-        context.updateLoggers()
-    }
     LOGGER.debug("If you see this, you're in debug mode :)")
     try {
         FileReader(SETTINGS_FILE, Charsets.UTF_8).use { SuperpackSettings.INSTANCE.copyFromRead(it) }

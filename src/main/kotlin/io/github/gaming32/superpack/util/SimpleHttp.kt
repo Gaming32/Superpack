@@ -42,7 +42,7 @@ object SimpleHttp {
     @JvmStatic
     @Throws(MalformedURLException::class)
     private fun buildUrl(url: StringBuilder, queryParams: Map<String, *>): URL {
-        if (!queryParams.isEmpty()) {
+        if (queryParams.isNotEmpty()) {
             url.append('?')
             for ((key, value) in queryParams) {
                 url.append(key)
@@ -66,5 +66,5 @@ object SimpleHttp {
 
     @JvmStatic
     @Throws(IOException::class)
-    fun URL.stream() = request().getInputStream()
+    fun URL.stream() = request().getInputStream()!!
 }

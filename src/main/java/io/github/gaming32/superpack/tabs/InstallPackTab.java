@@ -430,12 +430,27 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
         }
     }
 
-    private boolean doInstall0() throws InterruptedException, IOException, NoSuchAlgorithmException {
+    private boolean doInstall0() throws InterruptedException, IOException, NoSuchAlgorithmException, InvocationTargetException {
         if (outputDir.getText().isEmpty()) {
             println("Please specify a destination directory");
             return false;
         }
         final File outputDirFile = new File(outputDir.getText());
+        if (outputDirFile.getName().equals("mods")) {
+            final boolean[] proceed = {false};
+            SwingUtilities.invokeAndWait(() ->
+                proceed[0] = JOptionPane.showConfirmDialog(
+                    this,
+                    "Superpack is not designed to install directly into mods folders. " +
+                        "You may have meant to select the containing folder, " + outputDirFile.getParentFile().getName() + ". " +
+                        "Would you like to proceed with the installation anyway?",
+                    GeneralUtilKt.getTitle(this),
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.WARNING_MESSAGE
+                ) == JOptionPane.YES_OPTION
+            );
+            if (!proceed[0]) return false;
+        }
 
         final EnvSide env = (EnvSide)side.getSelectedItem();
         println("Creating destination directory...");
