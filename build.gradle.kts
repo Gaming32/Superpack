@@ -9,7 +9,7 @@ plugins {
 }
 
 group = "io.github.gaming32"
-version = "1.0-SNAPSHOT"
+version = "0.3"
 
 java.sourceCompatibility = JavaVersion.VERSION_11
 java.targetCompatibility = JavaVersion.VERSION_11
