@@ -5,7 +5,7 @@ plugins {
     java
     kotlin("jvm") version "1.8.21"
     id("io.ktor.plugin") version "2.1.1" // It builds fat JARs
-    id("io.freefair.lombok") version "6.6-rc1"
+    id("io.freefair.lombok") version "8.0.1"
 }
 
 group = "io.github.gaming32"
@@ -40,7 +40,7 @@ dependencies {
     implementation("org.apache.logging.log4j:log4j-core:2.19.0")
     implementation("com.github.gaming32:pipeline:5984f99cbe")
     implementation("org.jetbrains:annotations:24.0.0")
-    compileOnly("org.projectlombok:lombok:1.18.24")
+    compileOnly("org.projectlombok:lombok:1.18.26")
 }
 
 tasks.withType<JavaCompile> {
