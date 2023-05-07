@@ -2,9 +2,11 @@ package io.github.gaming32.superpack.util
 
 import com.google.gson.stream.JsonWriter
 import com.sun.jna.Platform
+import io.github.gaming32.mrpacklib.util.GsonHelper
 import io.github.gaming32.superpack.APP_NAME
 import io.github.gaming32.superpack.ICON_CACHE_DIR
 import io.github.gaming32.superpack.util.SimpleHttp.request
+import io.github.oshai.KotlinLogging
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.slf4j.helpers.Util
@@ -20,7 +22,6 @@ import java.security.MessageDigest
 import java.text.DecimalFormat
 import java.util.*
 import java.util.concurrent.CompletableFuture
-import java.util.function.Consumer
 import javax.imageio.ImageIO
 import javax.swing.*
 import javax.swing.event.DocumentEvent
@@ -30,7 +31,7 @@ import javax.swing.filechooser.FileNameExtensionFilter
 import kotlin.concurrent.thread
 import kotlin.io.path.*
 
-private val LOGGER = getLogger()
+private val logger = KotlinLogging.logger {}
 
 const val THUMBNAIL_SIZE = 64
 
@@ -108,19 +109,11 @@ fun Long.toIntClamped() = when {
     else -> toInt()
 }
 
-fun JTextField.addDocumentListener(listener: Consumer<DocumentEvent>) =
+fun JTextField.addDocumentListener(listener: DocumentEvent.() -> Unit) =
     document.addDocumentListener(object : DocumentListener {
-        override fun insertUpdate(e: DocumentEvent) {
-            listener.accept(e)
-        }
-
-        override fun removeUpdate(e: DocumentEvent) {
-            listener.accept(e)
-        }
-
-        override fun changedUpdate(e: DocumentEvent) {
-            listener.accept(e)
-        }
+        override fun insertUpdate(e: DocumentEvent) = e.listener()
+        override fun removeUpdate(e: DocumentEvent) = e.listener()
+        override fun changedUpdate(e: DocumentEvent) = e.listener()
     })
 
 @Throws(IOException::class)
@@ -154,6 +147,9 @@ fun ByteArray.toHexString(): String {
     }
     return result.toString()
 }
+
+@Suppress("NOTHING_TO_INLINE")
+inline fun String.parseHexString(): ByteArray = GsonHelper.fromHexString(this)
 
 fun <T : Any> Iterable<T>.findFirst() = iterator().findFirst()
 
@@ -191,7 +187,7 @@ fun String.sha1() = toByteArray(Charsets.UTF_8).sha1()
 fun ByteArray.sha1(): ByteArray = getSha1().digest(this)
 
 /**
- * Computes the SHA-1 hash of the specified input stream, closing it afterwards.
+ * Computes the SHA-1 hash of the specified input stream, closing it afterward.
  */
 @Throws(IOException::class)
 fun InputStream.sha1(): ByteArray {
@@ -215,8 +211,8 @@ fun getIconCacheKey(iconUrl: String): String {
     }
 }
 
-fun loadProjectIcon(iconUrl: URL, completionHandler: Consumer<Image?>) {
-    loadProjectIcon(iconUrl).thenAccept { SwingUtilities.invokeLater { completionHandler.accept(it) } }
+fun loadProjectIcon(iconUrl: URL, completionHandler: (Image?) -> Unit) {
+    loadProjectIcon(iconUrl).thenAccept { SwingUtilities.invokeLater { completionHandler(it) } }
 }
 
 fun loadProjectIcon(iconUrl: URL): CompletableFuture<Image?> =
@@ -234,7 +230,7 @@ fun loadProjectIcon(iconUrl: URL): CompletableFuture<Image?> =
             if (image == null) return@getFuture null
             image = image.getScaledInstance(THUMBNAIL_SIZE, THUMBNAIL_SIZE, Image.SCALE_SMOOTH)
         } catch (e: Exception) {
-            LOGGER.error("Error loading icon $strUrl", e)
+            logger.error("Error loading icon $strUrl", e)
             return@getFuture null
         }
         try {
@@ -246,7 +242,7 @@ fun loadProjectIcon(iconUrl: URL): CompletableFuture<Image?> =
                 iconCache
             )
         } catch (e: Exception) {
-            LOGGER.error("Error caching icon $cacheKey", e)
+            logger.error("Error caching icon $cacheKey", e)
         }
         image
     }
@@ -321,3 +317,6 @@ fun appendExtension(file: File, filter: FileFilter): File {
 }
 
 val JFileChooser.selectedSaveFile get() = appendExtension(selectedFile, fileFilter)
+
+@Suppress("NOTHING_TO_INLINE")
+inline operator fun File.div(other: String) = File(this, other)

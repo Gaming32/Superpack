@@ -1,13 +1,15 @@
 package io.github.gaming32.superpack.util
 
+import io.github.oshai.KotlinLogging
 import java.io.IOException
 import java.net.MalformedURLException
 import java.net.URL
 import java.net.URLConnection
 import java.net.URLEncoder
 
+private val logger = KotlinLogging.logger {}
+
 object SimpleHttp {
-    private val LOGGER = getLogger()
 
     @JvmField
     val USER_AGENT: String = run {
@@ -58,7 +60,7 @@ object SimpleHttp {
     @JvmStatic
     @Throws(IOException::class)
     fun URL.request(): URLConnection {
-        LOGGER.info("Requesting {}", this)
+        logger.info("Requesting {}", this)
         val cnxn = openConnection()
         cnxn.setRequestProperty("User-Agent", USER_AGENT)
         return cnxn

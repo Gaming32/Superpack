@@ -4,15 +4,16 @@ import com.jthemedetecor.OsThemeDetector
 import com.sun.jna.Platform
 import io.github.gaming32.superpack.themes.Theme
 import io.github.gaming32.superpack.themes.Themes
-import io.github.gaming32.superpack.util.getLogger
+import io.github.gaming32.superpack.util.div
 import io.github.gaming32.superpack.util.showErrorMessage
 import io.github.gaming32.superpack.util.toHexString
+import io.github.oshai.KotlinLogging
 import java.io.File
 import java.io.FileReader
 import java.io.FileWriter
 import javax.swing.SwingUtilities
 
-private val LOGGER = getLogger()
+private val logger = KotlinLogging.logger {}
 
 const val APP_NAME = "Superpack"
 const val MODRINTH_API_ROOT = "https://api.modrinth.com/v2/"
@@ -21,37 +22,37 @@ const val MODRINTH_API_ROOT = "https://api.modrinth.com/v2/"
 val DATA_DIR = getDataDir()
 
 @JvmField
-val SETTINGS_FILE = File(DATA_DIR, "settings.json")
+val SETTINGS_FILE = DATA_DIR / "settings.json"
 
 @JvmField
-val MYPACKS_FILE = File(DATA_DIR, "mypacks.json")
+val MYPACKS_FILE = DATA_DIR / "mypacks.json"
 
 @JvmField
-val CACHE_DIR = File(DATA_DIR, "cache")
+val CACHE_DIR = DATA_DIR / "cache"
 
 @JvmField
-val DOWNLOAD_CACHE_DIR = File(CACHE_DIR, "downloadCache")
+val DOWNLOAD_CACHE_DIR = CACHE_DIR / "downloadCache"
 
 @JvmField
-val ICON_CACHE_DIR = File(CACHE_DIR, "iconCache")
+val ICON_CACHE_DIR = CACHE_DIR / "iconCache"
 
 fun main(args: Array<String>) {
-    LOGGER.debug("If you see this, you're in debug mode :)")
+    logger.debug("If you see this, you're in debug mode :)")
     try {
         FileReader(SETTINGS_FILE, Charsets.UTF_8).use { SuperpackSettings.INSTANCE.copyFromRead(it) }
     } catch (e: Exception) {
-        LOGGER.warn("Failed to load settings, using defaults", e)
+        logger.warn("Failed to load settings, using defaults", e)
         SuperpackSettings.INSTANCE.copyFrom(SuperpackSettings())
     }
     if (SuperpackSettings.INSTANCE.theme == null) {
-        LOGGER.warn("Configured theme was unknown. Falling back to {}.", Themes.DEFAULT.id)
+        logger.warn("Configured theme was unknown. Falling back to {}.", Themes.DEFAULT.id)
         SuperpackSettings.INSTANCE.theme = Themes.DEFAULT
     }
     saveSettings()
     try {
         FileReader(MYPACKS_FILE, Charsets.UTF_8).use { MyPacks.INSTANCE.copyFromRead(it) }
     } catch (e: Exception) {
-        LOGGER.warn("Failed to load My Packs, using defaults", e)
+        logger.warn("Failed to load My Packs, using defaults", e)
         MyPacks.INSTANCE.copyFrom(MyPacks())
     }
     MyPacks.INSTANCE.removeMissing()
@@ -84,13 +85,13 @@ private fun getDataDir() = if (Platform.isWindows()) {
 fun saveSettings() = try {
     FileWriter(SETTINGS_FILE, Charsets.UTF_8).use { SuperpackSettings.INSTANCE.write(it) }
 } catch (e: Exception) {
-    LOGGER.error("Failed to save settings", e)
+    logger.error("Failed to save settings", e)
 }
 
 fun saveMyPacks() = try {
     FileWriter(MYPACKS_FILE, Charsets.UTF_8).use { MyPacks.INSTANCE.write(it) }
 } catch (e: Exception) {
-    LOGGER.error("Failed to save My Packs", e)
+    logger.error("Failed to save My Packs", e)
 }
 
 fun getCacheFilePath(sha1: ByteArray): File {
@@ -112,7 +113,7 @@ fun isThemeDark(): Boolean {
 }
 
 fun setTheme(theme: Theme) {
-    LOGGER.info("Setting theme: {}", theme.id)
+    logger.info("Setting theme: {}", theme.id)
     SuperpackSettings.INSTANCE.theme = theme
     saveSettings()
     theme.apply(isThemeDark())

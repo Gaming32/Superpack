@@ -7,6 +7,7 @@ import io.github.gaming32.superpack.SuperpackKt;
 import io.github.gaming32.superpack.SuperpackMainFrame;
 import io.github.gaming32.superpack.labrinth.*;
 import io.github.gaming32.superpack.util.*;
+import kotlin.Unit;
 import kotlin.text.Charsets;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -159,13 +160,14 @@ public final class ModrinthTab extends JPanel implements HasLogger, Scrollable {
                         }
                     }
                 };
-                GeneralUtilKt.addDocumentListener(searchField, ev ->
+                GeneralUtilKt.addDocumentListener(searchField, ev -> {
                     loadElements(
                         0,
                         ev.getDocument().getLength() == 0 ? null : searchField.getText(),
                         refreshResults
-                    )
-                );
+                    );
+                    return Unit.INSTANCE;
+                });
                 pageSelector.addActionListener(ev -> {
                     if (disablePageSelector) return;
                     loadElements(
@@ -275,6 +277,7 @@ public final class ModrinthTab extends JPanel implements HasLogger, Scrollable {
                                 if (image != null) {
                                     icon.setIcon(new ImageIcon(image));
                                 }
+                                return Unit.INSTANCE;
                             });
                         }
 
@@ -421,7 +424,10 @@ public final class ModrinthTab extends JPanel implements HasLogger, Scrollable {
 
                     final JLabel icon = new JLabel(placeholderIcon);
                     if (project.getIconUrl() != null) {
-                        GeneralUtilKt.loadProjectIcon(project.getIconUrl(), image -> icon.setIcon(new ImageIcon(image)));
+                        GeneralUtilKt.loadProjectIcon(project.getIconUrl(), image -> {
+                            icon.setIcon(new ImageIcon(image));
+                            return Unit.INSTANCE;
+                        });
                     }
                     nameAndIcon.add(icon);
 

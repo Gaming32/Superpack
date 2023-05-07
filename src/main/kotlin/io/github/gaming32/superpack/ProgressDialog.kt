@@ -5,15 +5,15 @@ import io.github.gaming32.superpack.util.HasLogger
 import io.github.gaming32.superpack.util.getLogger
 import java.awt.BorderLayout
 import java.awt.Frame
-import java.util.function.Consumer
 import javax.swing.*
 
-class ProgressDialog(owner: Frame?, private val themeDetector: OsThemeDetector, title: String?, note: String?) :
-    JDialog(owner, title, true), HasLogger {
-    private val themeListener = Consumer { isDark: Boolean? ->
+class ProgressDialog(
+    owner: Frame?, private val themeDetector: OsThemeDetector, title: String?, note: String?
+) : JDialog(owner, title, true), HasLogger {
+    private val themeListener: (Boolean) -> Unit = { isDark ->
         if (SuperpackSettings.INSTANCE.theme.isAffectedBySystem) {
             SwingUtilities.invokeLater {
-                SuperpackSettings.INSTANCE.theme.systemThemeChanged(isDark!!)
+                SuperpackSettings.INSTANCE.theme.systemThemeChanged(isDark)
                 SwingUtilities.updateComponentTreeUI(this)
             }
         }
@@ -77,21 +77,14 @@ class ProgressDialog(owner: Frame?, private val themeDetector: OsThemeDetector, 
         pack()
     }
 
-    fun setProgress(value: Int) {
-        progressBar.value = value
-    }
+    var progress by progressBar::value
+    var maximum by progressBar::maximum
 
-    fun setMaximum(value: Int) {
-        progressBar.maximum = value
-    }
+    var indeterminate
+        get() = progressBar.isIndeterminate
+        set(value) { progressBar.isIndeterminate = value }
 
-    fun setIndeterminate(value: Boolean) {
-        progressBar.isIndeterminate = value
-    }
-
-    fun setString(s: String?) {
-        progressBar.string = s
-    }
+    var string: String? by progressBar::string
 
     fun cancelled(): Boolean {
         return openedOnce && !isVisible

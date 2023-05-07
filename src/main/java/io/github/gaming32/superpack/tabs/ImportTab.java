@@ -4,6 +4,7 @@ import io.github.gaming32.superpack.FileDialogs;
 import io.github.gaming32.superpack.SuperpackMainFrame;
 import io.github.gaming32.superpack.util.GeneralUtilKt;
 import io.github.gaming32.superpack.util.HasLogger;
+import kotlin.Unit;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 
@@ -25,9 +26,10 @@ public final class ImportTab extends JPanel implements HasLogger {
         final JButton[] installPackButtonFR = new JButton[1];
         final JTextField filePathField = new JTextField();
         filePathField.setPreferredSize(new Dimension(500, filePathField.getPreferredSize().height));
-        GeneralUtilKt.addDocumentListener(filePathField, ev ->
-            installPackButtonFR[0].setEnabled(ev.getDocument().getLength() > 0)
-        );
+        GeneralUtilKt.addDocumentListener(filePathField, ev -> {
+            installPackButtonFR[0].setEnabled(ev.getDocument().getLength() > 0);
+            return Unit.INSTANCE;
+        });
 
         final JButton browseButton = new JButton("Browse...");
         browseButton.addActionListener(e -> {

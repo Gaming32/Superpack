@@ -42,6 +42,7 @@ dependencies {
 
     implementation("org.apache.logging.log4j:log4j-slf4j-impl:2.19.0")
     implementation("org.apache.logging.log4j:log4j-core:2.19.0")
+    implementation("io.github.oshai:kotlin-logging-jvm:4.0.0-beta-22")
 
     implementation("com.github.TheRandomLabs:CurseApi:cdc5d48d5e")
     implementation("com.github.TheRandomLabs:CurseApi-Minecraft:6d2f4654d2")

@@ -7,6 +7,7 @@ import io.github.gaming32.superpack.SuperpackKt;
 import io.github.gaming32.superpack.SuperpackMainFrame;
 import io.github.gaming32.superpack.util.GeneralUtilKt;
 import io.github.gaming32.superpack.util.HasLogger;
+import kotlin.Unit;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 
@@ -100,6 +101,7 @@ public final class MyPacksTab extends JPanel implements HasLogger, Scrollable, S
                     if (image != null) {
                         icon.setIcon(new ImageIcon(image));
                     }
+                    return Unit.INSTANCE;
                 });
             }
 
