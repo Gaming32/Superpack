@@ -2,7 +2,6 @@ package io.github.gaming32.superpack.tabs;
 
 import io.github.gaming32.mrpacklib.Mrpack.EnvCompatibility;
 import io.github.gaming32.mrpacklib.Mrpack.EnvSide;
-import io.github.gaming32.pipeline.Pipelines;
 import io.github.gaming32.superpack.ProgressDialog;
 import io.github.gaming32.superpack.SuperpackKt;
 import io.github.gaming32.superpack.SuperpackMainFrame;
@@ -682,7 +681,7 @@ public final class ModrinthTab extends JPanel implements HasLogger, Scrollable {
                             centerPanel.setLayout(new BoxLayout(centerPanel, BoxLayout.Y_AXIS));
 
                             final JLabel loaders = new JLabel(
-                                Pipelines.iterator(version.getLoaders())
+                                Arrays.stream(version.getLoaders())
                                     .map(GeneralUtilKt::capitalize)
                                     .collect(Collectors.joining(", "))
                             );
@@ -693,7 +692,7 @@ public final class ModrinthTab extends JPanel implements HasLogger, Scrollable {
 
                             button.add(centerPanel);
                         }
-                        final Version.File file = Pipelines.iterator(version.getFiles())
+                        final Version.File file = Arrays.stream(version.getFiles())
                             .filter(Version.File::isPrimary)
                             .findFirst()
                             .orElse(version.getFiles()[0]);

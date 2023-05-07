@@ -32,14 +32,23 @@ repositories {
 
 dependencies {
     implementation("com.github.gaming32:mrpacklib:9d979177f9")
+
     implementation("com.formdev:flatlaf:3.0")
+
     implementation("com.github.Dansoftowner:jSystemThemeDetector:3.8")
+
     implementation("net.java.dev.jna:jna:5.12.1")
     implementation("net.java.dev.jna:jna-platform:5.12.1")
+
     implementation("org.apache.logging.log4j:log4j-slf4j-impl:2.19.0")
     implementation("org.apache.logging.log4j:log4j-core:2.19.0")
-    implementation("com.github.gaming32:pipeline:5984f99cbe")
-    implementation("org.jetbrains:annotations:24.0.0")
+
+    implementation("com.github.TheRandomLabs:CurseApi:cdc5d48d5e")
+    implementation("com.github.TheRandomLabs:CurseApi-Minecraft:6d2f4654d2")
+    implementation("org.jsoup:jsoup:1.16.1") // Upgrade from old jsoup version that has CVEs
+
+    compileOnly("org.jetbrains:annotations:24.0.0")
+
     compileOnly("org.projectlombok:lombok:1.18.26")
 }
 
