@@ -35,7 +35,7 @@ public final class ImportTab extends JPanel implements HasLogger {
 
         final JButton browseButton = new JButton("Browse...");
         browseButton.addActionListener(e -> {
-            final File file = FileDialogs.mrpack(this);
+            final File file = FileDialogs.modpack(this);
             if (file != null) {
                 filePathField.setText(file.getAbsolutePath());
             }
@@ -52,6 +52,8 @@ public final class ImportTab extends JPanel implements HasLogger {
             }
             try {
                 parent.openInstallPack(new InstallPackTab(parent, Modpack.open(new ZipFile(packFile))));
+            } catch (IllegalArgumentException e) {
+                GeneralUtilKt.showErrorMessage(this, e.getLocalizedMessage());
             } catch (IOException e) {
                 GeneralUtilKt.showErrorMessage(this, e);
             }

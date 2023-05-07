@@ -66,7 +66,7 @@ public final class MyPacksTab extends JPanel implements HasLogger, Scrollable, S
                 GeneralUtilKt.browseFileDirectory(this, pack.getPath())
             );
             menu.add("Save a Copy").addActionListener(ev -> {
-                final File outputFile = FileDialogs.saveMrpack(this);
+                final File outputFile = FileDialogs.saveModpack(this, pack.getType());
                 if (outputFile == null) return;
                 try {
                     Files.copy(pack.getPath().toPath(), outputFile.toPath(), StandardCopyOption.REPLACE_EXISTING);

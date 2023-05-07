@@ -1,5 +1,6 @@
 package io.github.gaming32.superpack;
 
+import io.github.gaming32.superpack.modpack.ModpackType;
 import io.github.gaming32.superpack.util.GeneralUtilKt;
 import lombok.AccessLevel;
 import lombok.Data;
@@ -20,6 +21,7 @@ public final class MyPacks {
         private String filename; // Might differ in the case of downloadCache files
         private String name;
         private String description;
+        private ModpackType type = ModpackType.MODRINTH;
         private byte[] hash;
         @Setter(AccessLevel.NONE)
         private transient long longHash;

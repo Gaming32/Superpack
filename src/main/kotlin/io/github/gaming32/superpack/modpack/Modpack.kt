@@ -1,6 +1,5 @@
 package io.github.gaming32.superpack.modpack
 
-import io.github.gaming32.superpack.modpack.modrinth.ModrinthModpack
 import java.io.File
 import java.io.IOException
 import java.util.zip.ZipFile
@@ -34,10 +33,10 @@ interface Modpack : AutoCloseable {
     companion object {
         @JvmStatic
         @Throws(IOException::class)
-        fun open(zipFile: ZipFile) = when {
-            zipFile.getEntry("modrinth.index.json") != null -> ModrinthModpack(zipFile)
-//            zipFile.getEntry("manifest.json") != null -> CurseForgeModpack(zipFile)
-            else -> throw IllegalArgumentException("Couldn't detect modpack type of ${zipFile.name}")
-        }
+        fun open(zipFile: ZipFile) = ModpackType.values()
+            .firstOrNull { it.isPack(zipFile) }
+            ?.makePack
+            ?.invoke(zipFile)
+            ?: throw IllegalArgumentException("Couldn't detect modpack type of ${zipFile.name}")
     }
 }
