@@ -135,7 +135,9 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
         installButton.addActionListener(ev -> {
             setConfigEnabled(false);
             installOutput.setText("");
-            new Thread(this::doInstall, "InstallThread").start();
+            final Thread installThread = new Thread(this::doInstall, "InstallThread");
+            installThread.setDaemon(true);
+            installThread.start();
         });
 
         installOutput = new NonWrappingTextPane();
