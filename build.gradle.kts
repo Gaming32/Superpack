@@ -45,7 +45,6 @@ dependencies {
     implementation("io.github.oshai:kotlin-logging-jvm:4.0.0-beta-22")
 
     implementation("com.github.TheRandomLabs:CurseApi:cdc5d48d5e")
-    implementation("com.github.TheRandomLabs:CurseApi-Minecraft:6d2f4654d2")
     implementation("org.jsoup:jsoup:1.16.1") // Upgrade from old jsoup version that has CVEs
 
     compileOnly("org.jetbrains:annotations:24.0.0")
