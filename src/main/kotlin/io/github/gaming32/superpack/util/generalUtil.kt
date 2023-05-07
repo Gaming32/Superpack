@@ -100,7 +100,7 @@ fun getHumanFileSize(size: Long): String {
     return SIZE_FORMAT.format(size.toDouble() / (1L shl divisor)) + " " + unit
 }
 
-fun getHumanFileSizeExtended(size: Long) = "${getHumanFileSize(size)} ($size bytes)"
+fun getHumanFileSizeExtended(size: Long) = String.format("%s (%,d bytes)", getHumanFileSize(size), size)
 
 fun Long.toIntClamped() = when {
     this > Int.MAX_VALUE -> Int.MAX_VALUE
