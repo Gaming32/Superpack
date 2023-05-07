@@ -133,7 +133,7 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
             }
         }
 
-        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+        setDefaultCloseOperation(EXIT_ON_CLOSE); // I don't like this, but there seems to be issues with DISPOSE_ON_CLOSE
         setContentPane(tabbedPane);
         pack();
         setSize(960, 540);
@@ -172,7 +172,8 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
         try {
             openInstallPack(new InstallPackTab(this, Modpack.open(new ZipFile(file))));
         } catch (IllegalArgumentException e) {
-            GeneralUtilKt.showErrorMessage(this, e.getLocalizedMessage());
+            LOGGER.error("Failed to openInstallPack", e);
+            GeneralUtilKt.onlyShowErrorMessage(this, e.getLocalizedMessage());
         }
     }
 

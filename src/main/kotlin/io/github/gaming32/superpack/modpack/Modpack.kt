@@ -5,10 +5,7 @@ import java.io.IOException
 import java.util.zip.ZipFile
 
 interface Modpack : AutoCloseable {
-    /**
-     * Contract: if [isSided] is `true`, then all [Side] arguments are ignored.
-     */
-    val isSided: Boolean
+    val type: ModpackType
 
     val name: String
 

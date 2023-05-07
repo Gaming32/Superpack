@@ -10,12 +10,14 @@ import io.github.gaming32.superpack.labrinth.ModrinthId;
 import io.github.gaming32.superpack.labrinth.Project;
 import io.github.gaming32.superpack.labrinth.Version;
 import io.github.gaming32.superpack.modpack.*;
+import io.github.gaming32.superpack.modpack.curseforge.CurseForgeModpackFile;
 import io.github.gaming32.superpack.util.*;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 
 import javax.swing.*;
 import javax.swing.GroupLayout.Alignment;
+import javax.swing.event.HyperlinkEvent;
 import java.awt.*;
 import java.io.*;
 import java.lang.reflect.InvocationTargetException;
@@ -25,10 +27,8 @@ import java.nio.file.StandardCopyOption;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public final class InstallPackTab extends JPanel implements HasLogger, AutoCloseable {
     private static final Logger LOGGER = GeneralUtilKt.getLogger();
@@ -116,20 +116,22 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
         optionalCheckboxes = new HashMap<>();
         populateOptionalCheckboxes();
 
-        viewOnModrinthButton = new JButton("View on Modrinth");
-        viewOnModrinthButton.setEnabled(false);
-        getModrinthProjectId(() -> {
-            if (modrinthProjectId != null) {
-                viewOnModrinthButton.setEnabled(true);
-            }
-        });
-        viewOnModrinthButton.addActionListener(ev -> {
-            if (modrinthProjectId == null) {
-                getModrinthProjectId(this::openOnModrinth);
-                return;
-            }
-            openOnModrinth();
-        });
+        if (pack.getType() == ModpackType.MODRINTH) {
+            viewOnModrinthButton = new JButton("View on Modrinth");
+            viewOnModrinthButton.setEnabled(false);
+            getModrinthProjectId(() -> {
+                if (modrinthProjectId != null) {
+                    viewOnModrinthButton.setEnabled(true);
+                }
+            });
+            viewOnModrinthButton.addActionListener(ev -> {
+                if (modrinthProjectId == null) {
+                    getModrinthProjectId(this::openOnModrinth);
+                    return;
+                }
+                openOnModrinth();
+            });
+        }
 
         installButton = new JButton("Install!");
         installButton.addActionListener(ev -> {
@@ -170,101 +172,121 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
         setLayout(layout);
         layout.setAutoCreateGaps(true);
         layout.setAutoCreateContainerGaps(true);
-        layout.setHorizontalGroup(layout.createParallelGroup(Alignment.CENTER)
-            .addGroup(layout.createSequentialGroup()
-                .addComponent(
-                    selectedPackLabel,
+        layout.setHorizontalGroup(GeneralUtilKt.build(layout.createParallelGroup(Alignment.CENTER),
+            g -> g.addGroup(layout.createSequentialGroup()
+                    .addComponent(
+                        selectedPackLabel,
+                        GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE
+                    )
+                    .addComponent(selectedPack)
+                )
+                .addGroup(layout.createSequentialGroup()
+                    .addComponent(
+                        outputDirLabel,
+                        GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE
+                    )
+                    .addComponent(outputDir)
+                    .addComponent(
+                        browseOutputDir,
+                        GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE
+                    )
+                ),
+            g -> {
+                if (!pack.getType().getSupportsSides()) {
+                    return g;
+                }
+                return g.addGroup(layout.createSequentialGroup()
+                    .addComponent(
+                        sideLabel,
+                        GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE
+                    )
+                    .addComponent(side)
+                );
+            },
+            g -> g.addComponent(
+                    optionalCheckboxPanel, Alignment.TRAILING,
                     GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE
                 )
-                .addComponent(selectedPack)
-            )
-            .addGroup(layout.createSequentialGroup()
-                .addComponent(
-                    outputDirLabel,
+                .addGroup(GeneralUtilKt.build(layout.createSequentialGroup(),
+                    g1 -> {
+                        if (viewOnModrinthButton == null) {
+                            return g1;
+                        }
+                        return g1.addComponent(
+                            viewOnModrinthButton,
+                            GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE
+                        );
+                    },
+                    g1 -> g1.addComponent(
+                        installButton,
+                        GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE
+                    )
+                ))
+                .addComponent(outputScrollPane)
+                .addComponent(downloadBars)
+        ));
+        layout.setVerticalGroup(GeneralUtilKt.build(layout.createSequentialGroup(),
+            g -> g.addGroup(layout.createParallelGroup(Alignment.CENTER)
+                    .addComponent(
+                        selectedPackLabel,
+                        GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE
+                    )
+                    .addComponent(
+                        selectedPack,
+                        GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE
+                    )
+                )
+                .addGroup(layout.createParallelGroup(Alignment.CENTER)
+                    .addComponent(
+                        outputDirLabel,
+                        GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE
+                    )
+                    .addComponent(
+                        outputDir,
+                        GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE
+                    )
+                    .addComponent(
+                        browseOutputDir,
+                        GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE
+                    )
+                ),
+            g -> {
+                if (!pack.getType().getSupportsSides()) {
+                    return g;
+                }
+                return g.addGroup(layout.createParallelGroup(Alignment.CENTER)
+                    .addComponent(
+                        sideLabel,
+                        GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE
+                    )
+                    .addComponent(
+                        side,
+                        GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE
+                    )
+                );
+            },
+            g -> g.addComponent(
+                    optionalCheckboxPanel,
                     GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE
                 )
-                .addComponent(outputDir)
-                .addComponent(
-                    browseOutputDir,
-                    GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE
-                )
-            )
-            .addGroup(layout.createSequentialGroup()
-                .addComponent(
-                    sideLabel,
-                    GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE
-                )
-                .addComponent(side)
-            )
-            .addComponent(
-                optionalCheckboxPanel, Alignment.TRAILING,
-                GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE
-            )
-            .addGroup(layout.createSequentialGroup()
-                .addComponent(
-                    viewOnModrinthButton,
-                    GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE
-                )
-                .addComponent(
-                    installButton,
-                    GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE
-                )
-            )
-            .addComponent(outputScrollPane)
-            .addComponent(downloadBars)
-        );
-        layout.setVerticalGroup(layout.createSequentialGroup()
-            .addGroup(layout.createParallelGroup(Alignment.CENTER)
-                .addComponent(
-                    selectedPackLabel,
-                    GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE
-                )
-                .addComponent(
-                    selectedPack,
-                    GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE
-                )
-            )
-            .addGroup(layout.createParallelGroup(Alignment.CENTER)
-                .addComponent(
-                    outputDirLabel,
-                    GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE
-                )
-                .addComponent(
-                    outputDir,
-                    GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE
-                )
-                .addComponent(
-                    browseOutputDir,
-                    GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE
-                )
-            )
-            .addGroup(layout.createParallelGroup(Alignment.CENTER)
-                .addComponent(
-                    sideLabel,
-                    GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE
-                )
-                .addComponent(
-                    side,
-                    GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE
-                )
-            )
-            .addComponent(
-                optionalCheckboxPanel,
-                GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE
-            )
-            .addGroup(layout.createParallelGroup(Alignment.CENTER)
-                .addComponent(
-                    viewOnModrinthButton,
-                    GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE
-                )
-                .addComponent(
-                    installButton,
-                    GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE
-                )
-            )
-            .addComponent(outputScrollPane)
-            .addComponent(downloadBars)
-        );
+                .addGroup(GeneralUtilKt.build(layout.createParallelGroup(Alignment.CENTER),
+                    g1 -> {
+                        if (viewOnModrinthButton == null) {
+                            return g1;
+                        }
+                        return g1.addComponent(
+                            viewOnModrinthButton,
+                            GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE
+                        );
+                    },
+                    g1 -> g1.addComponent(
+                            installButton,
+                            GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE
+                        )
+                ))
+                .addComponent(outputScrollPane)
+                .addComponent(downloadBars)
+        ));
     }
 
     private void populateOptionalCheckboxes() {
@@ -442,9 +464,10 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
         outputDirFile.mkdirs();
 
         println("\nDownloading files...");
+        final String secondaryHash = pack.getType().getSecondaryHash().getAlgorithm();
         MultiMessageDigest digest = new MultiMessageDigest(
             GeneralUtilKt.getSha1(),
-            MessageDigest.getInstance("SHA-512")
+            MessageDigest.getInstance(secondaryHash)
         );
         long totalDownloadSize = 0;
         int[] installedCount = {0};
@@ -452,6 +475,7 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
         assert env != null;
         List<ModpackFile> filesToDownload = pack.getAllFiles(env);
         resetDownloadBars(filesToDownload.size());
+        final List<ModpackFile> failedToDownload = new ArrayList<>();
         for (ModpackFile file : filesToDownload) {
             SwingUtilities.invokeLater(() -> {
                 overallDownloadBar.setValue(installedCount[0]);
@@ -526,15 +550,15 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                 byte[] hash1 = digest.getDigests()[0].digest();
                 byte[] hash2 = file.getHashes().get("sha1");
                 println("      SHA-1: " + GeneralUtilKt.toHexString(hash1));
-                if (hash2 != null && !Arrays.equals(hash1, hash2)) {
+                if (!Arrays.equals(hash1, hash2)) {
                     println("         ERROR: SHA-1 doesn't match! Expected " + GeneralUtilKt.toHexString(hash2));
                     continue;
                 }
                 hash1 = digest.getDigests()[1].digest();
-                hash2 = file.getHashes().get("sha512");
-                println("      SHA-512: " + GeneralUtilKt.toHexString(hash1));
-                if (hash2 != null && !Arrays.equals(hash1, hash2)) {
-                    println("         ERROR: SHA-512 doesn't match! Expected " + GeneralUtilKt.toHexString(hash2));
+                hash2 = file.getHashes().get(pack.getType().getSecondaryHash().getApiId());
+                println("      " + secondaryHash + ": " + GeneralUtilKt.toHexString(hash1));
+                if (!Arrays.equals(hash1, hash2)) {
+                    println("         ERROR: " + secondaryHash + " doesn't match! Expected " + GeneralUtilKt.toHexString(hash2));
                     continue;
                 }
                 totalDownloadSize += downloadSize;
@@ -546,6 +570,7 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                 cacheFile.getParentFile().mkdirs();
                 Files.copy(destPath.toPath(), cacheFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
             } else {
+                failedToDownload.add(file);
                 println("   Failed to download file.");
                 try {
                     Files.delete(destPath.toPath());
@@ -565,9 +590,47 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
         });
 
         extractOverrides(outputDirFile, null);
-        extractOverrides(outputDirFile, env);
+        if (pack.getType().getSupportsSides()) {
+            extractOverrides(outputDirFile, env);
+        }
 
-        println("\nInstall success!");
+        println("\nInstall finished!");
+        if (!failedToDownload.isEmpty()) {
+            final StringBuilder curseForgeMessage = new StringBuilder("<html>Please download the following files manually:<ul>");
+            boolean anyCf = false;
+            println(failedToDownload.size() + " file(s) failed to download:");
+            for (final ModpackFile file : failedToDownload) {
+                println("  + " + file.getPath());
+                if (pack.getType() == ModpackType.CURSEFORGE && file.getDownloads().isEmpty()) {
+                    anyCf = true;
+                    curseForgeMessage.append("<li><a href=\"")
+                        .append(((CurseForgeModpackFile)file).getBrowserDownloadUrl())
+                        .append("\">")
+                        .append(file.getPath())
+                        .append("</a></li>");
+                }
+            }
+            if (anyCf) {
+                SwingUtilities.invokeAndWait(() -> JOptionPane.showMessageDialog(
+                    this,
+                    new JEditorPane("text/html", curseForgeMessage.append("</ul></html>").toString()) {{
+                        addHyperlinkListener(e -> {
+                            if (e.getEventType() == HyperlinkEvent.EventType.ACTIVATED) {
+                                try {
+                                    Desktop.getDesktop().browse(e.getURL().toURI());
+                                } catch (Exception e1) {
+                                    LOGGER.error("Failed to open link", e1);
+                                }
+                            }
+                        });
+                        setEditable(false);
+                        setBorder(null);
+                    }},
+                    GeneralUtilKt.getTitle(this),
+                    JOptionPane.WARNING_MESSAGE
+                ));
+            }
+        }
         return true;
     }
 

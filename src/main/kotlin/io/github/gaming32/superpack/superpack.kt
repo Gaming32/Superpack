@@ -99,7 +99,7 @@ fun getCacheFilePath(sha1: ByteArray): File {
     val path = hash.substring(0, 2) + '/' +
         hash.substring(2, 4) + '/' +
         hash.substring(4)
-    return File(DOWNLOAD_CACHE_DIR, path)
+    return DOWNLOAD_CACHE_DIR / path
 }
 
 fun getCacheFile(sha1: ByteArray, fileSize: Long): File? {

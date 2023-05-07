@@ -11,8 +11,8 @@ plugins {
 group = "io.github.gaming32"
 version = "0.3"
 
-java.sourceCompatibility = JavaVersion.VERSION_11
-java.targetCompatibility = JavaVersion.VERSION_11
+java.sourceCompatibility = JavaVersion.VERSION_17
+java.targetCompatibility = JavaVersion.VERSION_17
 
 application {
     mainClass.set("io.github.gaming32.superpack.SuperpackKt")
@@ -45,8 +45,7 @@ dependencies {
     implementation("org.apache.logging.log4j:log4j-core:2.20.0")
     implementation("io.github.oshai:kotlin-logging-jvm:4.0.0-beta-22")
 
-    implementation("com.github.TheRandomLabs:CurseApi:cdc5d48d5e")
-    implementation("org.jsoup:jsoup:1.16.1") // Upgrade from old jsoup version that has CVEs
+    implementation("io.github.matyrobbrt:curseforgeapi:1.7.4")
 
     compileOnly("org.jetbrains:annotations:24.0.1")
 
@@ -58,5 +57,5 @@ tasks.withType<JavaCompile> {
 }
 
 tasks.withType<KotlinCompile> {
-    kotlinOptions.jvmTarget = "11"
+    kotlinOptions.jvmTarget = "17"
 }

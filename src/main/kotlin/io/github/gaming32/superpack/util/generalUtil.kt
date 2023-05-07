@@ -22,6 +22,7 @@ import java.security.MessageDigest
 import java.text.DecimalFormat
 import java.util.*
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.Future
 import javax.imageio.ImageIO
 import javax.swing.*
 import javax.swing.event.DocumentEvent
@@ -30,6 +31,7 @@ import javax.swing.filechooser.FileFilter
 import javax.swing.filechooser.FileNameExtensionFilter
 import kotlin.concurrent.thread
 import kotlin.io.path.*
+import kotlin.reflect.KProperty
 
 private val logger = KotlinLogging.logger {}
 
@@ -220,7 +222,7 @@ fun loadProjectIcon(iconUrl: URL): CompletableFuture<Image?> =
     // parallelism and blocks while it loads the images.
     IMAGE_CACHE.getFuture(iconUrl.toExternalForm()) { strUrl ->
         val cacheKey = getIconCacheKey(strUrl)
-        val iconCache = File(ICON_CACHE_DIR, cacheKey)
+        val iconCache = ICON_CACHE_DIR / cacheKey
         var image: Image?
         try {
             if (iconCache.exists()) {
@@ -320,3 +322,9 @@ val JFileChooser.selectedSaveFile get() = appendExtension(selectedFile, fileFilt
 
 @Suppress("NOTHING_TO_INLINE")
 inline operator fun File.div(other: String) = File(this, other)
+
+operator fun <V> Future<V>.getValue(thisRef: Any?, property: KProperty<*>): V = get()
+
+inline fun <T, A, B> build(value: T, a: T.() -> A, b: A.() -> B) = b(a(value))
+
+inline fun <T, A, B, C> build(value: T, a: T.() -> A, b: A.() -> B, c: B.() -> C) = c(b(a(value)))
