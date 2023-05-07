@@ -1,20 +1,15 @@
 package io.github.gaming32.superpack.tabs;
 
 import com.google.gson.JsonSyntaxException;
-import io.github.gaming32.mrpacklib.Mrpack;
-import io.github.gaming32.mrpacklib.Mrpack.EnvCompatibility;
-import io.github.gaming32.mrpacklib.Mrpack.EnvSide;
-import io.github.gaming32.mrpacklib.packindex.PackFile;
-import io.github.gaming32.mrpacklib.packindex.PackIndex;
 import io.github.gaming32.superpack.FileDialogs;
 import io.github.gaming32.superpack.MyPacks;
-import io.github.gaming32.superpack.MyPacks.Modpack;
 import io.github.gaming32.superpack.SuperpackKt;
 import io.github.gaming32.superpack.SuperpackMainFrame;
 import io.github.gaming32.superpack.labrinth.LabrinthGson;
 import io.github.gaming32.superpack.labrinth.ModrinthId;
 import io.github.gaming32.superpack.labrinth.Project;
 import io.github.gaming32.superpack.labrinth.Version;
+import io.github.gaming32.superpack.modpack.*;
 import io.github.gaming32.superpack.util.*;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -34,22 +29,18 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipFile;
 
 public final class InstallPackTab extends JPanel implements HasLogger, AutoCloseable {
     private static final Logger LOGGER = GeneralUtilKt.getLogger();
 
     private final SuperpackMainFrame parent;
-    private final File packFile;
-    private final ZipFile packZip;
-    private final Mrpack pack;
+    private final Modpack pack;
     private final String friendlyName;
 
     private JTextField selectedPack;
     private JTextField outputDir;
     private JButton browseOutputDir;
-    private JComboBox<EnvSide> side;
+    private JComboBox<Side> side;
     private JPanel optionalCheckboxPanel;
     private Map<String, JCheckBox> optionalCheckboxes;
     private JButton viewOnModrinthButton;
@@ -62,11 +53,10 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
 
     private ModrinthId modrinthProjectId;
 
-    public InstallPackTab(SuperpackMainFrame parent, File packFile, String selectedFilename, String friendlyName) throws IOException {
+    public InstallPackTab(SuperpackMainFrame parent, Modpack pack, String selectedFilename, String friendlyName) throws IOException {
         super();
         this.parent = parent;
-        this.packFile = packFile;
-        pack = new Mrpack(packZip = new ZipFile(packFile));
+        this.pack = pack;
         this.friendlyName = friendlyName;
 
         createComponents();
@@ -74,11 +64,11 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
         selectedPack.setText(selectedFilename);
     }
 
-    public InstallPackTab(SuperpackMainFrame parent, File packFile) throws IOException {
-        this(parent, packFile, packFile.getAbsolutePath(), packFile.getName());
+    public InstallPackTab(SuperpackMainFrame parent, Modpack pack) throws IOException {
+        this(parent, pack, pack.getPath().getAbsolutePath(), pack.getName());
     }
 
-    public void setDefaultSide(EnvSide side) {
+    public void setDefaultSide(Side side) {
         this.side.setSelectedItem(side);
     }
 
@@ -93,7 +83,7 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
         if (pack != null) { // It's null if initialization failed
             try {
                 pack.close();
-            } catch (IOException e) {
+            } catch (Exception e) {
                 GeneralUtilKt.showErrorMessage(this, e);
             }
         }
@@ -114,7 +104,7 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
         });
 
         JLabel sideLabel = new JLabel("Installation side:");
-        side = new JComboBox<>(EnvSide.values());
+        side = new JComboBox<>(Side.values());
         side.addActionListener(ev -> {
             populateOptionalCheckboxes();
             revalidate();
@@ -280,7 +270,8 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
         Map<String, JCheckBox> oldOptionalCheckboxes = new HashMap<>(optionalCheckboxes);
         optionalCheckboxes.clear();
         try {
-            for (PackFile optionalFile : pack.getAllFiles((EnvSide)side.getSelectedItem(), EnvCompatibility.OPTIONAL)) {
+            //noinspection DataFlowIssue
+            for (ModpackFile optionalFile : pack.getAllFiles((Side)side.getSelectedItem(), Compatibility.OPTIONAL)) {
                 JCheckBox checkBox = new JCheckBox(optionalFile.getPath());
                 checkBox.setHorizontalTextPosition(SwingConstants.LEFT);
                 checkBox.setAlignmentX(Component.RIGHT_ALIGNMENT);
@@ -306,29 +297,21 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
         final Thread lookupThread = new Thread(() -> {
             final byte[] hash;
             try {
-                hash = GeneralUtilKt.sha1(new FileInputStream(packFile));
+                hash = GeneralUtilKt.sha1(new FileInputStream(pack.getPath()));
             } catch (Exception e) {
-                LOGGER.error("Hashing of " + packFile + " failed", e);
+                LOGGER.error("Hashing of " + pack.getPath() + " failed", e);
                 return;
             }
             SwingUtilities.invokeLater(() -> {
-                PackIndex index;
-                try {
-                    index = pack.getPackIndex();
-                } catch (IOException e) {
-                    // Should *never* happen
-                    LOGGER.error("Failed to read pack index while writing My Packs", e);
-                    return;
-                }
-                Modpack savedPack = MyPacks.INSTANCE.getPack(hash);
+                MyPacks.Modpack savedPack = MyPacks.INSTANCE.getPack(hash);
                 if (savedPack == null) {
-                    savedPack = new Modpack();
+                    savedPack = new MyPacks.Modpack();
                     savedPack.setHash(hash);
                 }
-                savedPack.setName(index.getName());
-                savedPack.setDescription(index.getSummary());
+                savedPack.setName(pack.getName() + ' ' + pack.getVersion());
+                savedPack.setDescription(pack.getDescription());
                 savedPack.setFilename(friendlyName);
-                savedPack.setPath(packFile);
+                savedPack.setPath(pack.getPath());
                 MyPacks.INSTANCE.addPack(savedPack);
                 MyPacks.INSTANCE.setDirty();
                 SuperpackKt.saveMyPacks();
@@ -358,7 +341,7 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                 return;
             }
             SwingUtilities.invokeLater(() -> {
-                final Modpack savedPack = MyPacks.INSTANCE.getPack(hash);
+                final MyPacks.Modpack savedPack = MyPacks.INSTANCE.getPack(hash);
                 if (savedPack == null) return; // Shouldn't happen, but better safe than sorry
                 savedPack.setIconUrl(projectData.getIconUrl());
                 MyPacks.INSTANCE.setDirty();
@@ -452,7 +435,7 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
             if (!proceed[0]) return false;
         }
 
-        final EnvSide env = (EnvSide)side.getSelectedItem();
+        final Side env = (Side)side.getSelectedItem();
         println("Creating destination directory...");
         outputDirFile.mkdirs();
 
@@ -464,16 +447,17 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
         long totalDownloadSize = 0;
         int[] installedCount = {0};
         int downloadedCount = 0;
-        List<PackFile> filesToDownload = pack.getAllFiles(env);
+        assert env != null;
+        List<ModpackFile> filesToDownload = pack.getAllFiles(env);
         resetDownloadBars(filesToDownload.size());
-        for (PackFile file : filesToDownload) {
+        for (ModpackFile file : filesToDownload) {
             SwingUtilities.invokeLater(() -> {
                 overallDownloadBar.setValue(installedCount[0]);
                 overallDownloadBar.setString("Downloading files... " + installedCount[0] + "/" + filesToDownload.size());
                 singleDownloadBar.setValue(0);
                 singleDownloadBar.setString("Downloading file...");
             });
-            if (file.getEnv().get(env) == EnvCompatibility.OPTIONAL) {
+            if (file.getCompatibility(env) == Compatibility.OPTIONAL) {
                 JCheckBox optionalCheckBox = optionalCheckboxes.get(file.getPath());
                 if (!optionalCheckBox.isSelected()) {
                     println("Skipped optional file " + file.getPath());
@@ -490,7 +474,7 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
             }
             destPath.getParentFile().mkdirs();
             println("Installing " + file.getPath() + " (" + ++installedCount[0] + "/" + filesToDownload.size() + ")");
-            if (Files.exists(destPath.toPath()) && Files.size(destPath.toPath()) == file.getFileSize()) {
+            if (Files.exists(destPath.toPath()) && Files.size(destPath.toPath()) == file.getSize()) {
                 digest.getDigests()[0].reset();
                 try (InputStream is = new DigestInputStream(new FileInputStream(destPath), digest.getDigests()[0])) {
                     GeneralUtilKt.readAndDiscard(is);
@@ -504,17 +488,17 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                 }
             }
             File cacheFile = SuperpackKt.getCacheFilePath(file.getHashes().get("sha1"));
-            if (cacheFile.isFile() && cacheFile.length() == file.getFileSize()) {
+            if (cacheFile.isFile() && cacheFile.length() == file.getSize()) {
                 println("   File found in cache at " + cacheFile);
                 Files.copy(cacheFile.toPath(), destPath.toPath(), StandardCopyOption.REPLACE_EXISTING);
                 continue;
             }
             boolean success = false;
-            final String downloadFileSize = GeneralUtilKt.getHumanFileSize(file.getFileSize());
+            final String downloadFileSize = GeneralUtilKt.getHumanFileSize(file.getSize());
             for (URL downloadUrl : file.getDownloads()) {
                 println("   Downloading " + downloadUrl);
                 SwingUtilities.invokeLater(() -> {
-                    singleDownloadBar.setMaximum(GeneralUtilKt.toIntClamped(file.getFileSize()));
+                    singleDownloadBar.setMaximum(GeneralUtilKt.toIntClamped(file.getSize()));
                     singleDownloadBar.setValue(0);
                     singleDownloadBar.setString("Downloading file... 0 B / " + downloadFileSize);
                 });
@@ -533,21 +517,21 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                     continue;
                 }
                 println("      Downloaded " + GeneralUtilKt.getHumanFileSizeExtended(downloadSize));
-                if (downloadSize != file.getFileSize()) {
-                    println("         ERROR: File size doesn't match! Expected " + GeneralUtilKt.getHumanFileSizeExtended(file.getFileSize()));
+                if (downloadSize != file.getSize()) {
+                    println("         ERROR: File size doesn't match! Expected " + GeneralUtilKt.getHumanFileSizeExtended(file.getSize()));
                     continue;
                 }
                 byte[] hash1 = digest.getDigests()[0].digest();
                 byte[] hash2 = file.getHashes().get("sha1");
                 println("      SHA-1: " + GeneralUtilKt.toHexString(hash1));
-                if (!Arrays.equals(hash1, hash2)) {
+                if (hash2 != null && !Arrays.equals(hash1, hash2)) {
                     println("         ERROR: SHA-1 doesn't match! Expected " + GeneralUtilKt.toHexString(hash2));
                     continue;
                 }
                 hash1 = digest.getDigests()[1].digest();
                 hash2 = file.getHashes().get("sha512");
                 println("      SHA-512: " + GeneralUtilKt.toHexString(hash1));
-                if (!Arrays.equals(hash1, hash2)) {
+                if (hash2 != null && !Arrays.equals(hash1, hash2)) {
                     println("         ERROR: SHA-512 doesn't match! Expected " + GeneralUtilKt.toHexString(hash2));
                     continue;
                 }
@@ -596,20 +580,20 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
         });
     }
 
-    private void extractOverrides(File outputDirFile, EnvSide side) throws InterruptedException, IOException {
+    private void extractOverrides(File outputDirFile, Side side) throws InterruptedException, IOException {
         String sideName = side == null ? "global" : side.toString().toLowerCase();
         println("\nExtracting " + sideName + " overrides...");
-        List<ZipEntry> overrides = pack.getOverrides(side);
+        final var overrides = pack.getOverrides(side);
         resetDownloadBars(overrides.size());
         int[] i = {0};
-        for (ZipEntry override : overrides) {
+        for (final FileOverride override : overrides) {
             SwingUtilities.invokeLater(() -> {
                 overallDownloadBar.setValue(i[0]);
                 overallDownloadBar.setString("Extracting " + sideName + " overrides... " + i[0] + "/" + overrides.size());
                 singleDownloadBar.setValue(0);
                 singleDownloadBar.setString("Extracting override...");
             });
-            String baseName = override.getName();
+            String baseName = override.getPath();
             baseName = baseName.substring(baseName.indexOf('/') + 1);
             File destFile = new File(outputDirFile, baseName);
             if (override.isDirectory()) {
@@ -617,7 +601,7 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                 i[0]++;
                 continue;
             }
-            println("Extracting " + override.getName() + " (" + (i[0] + 1) + "/" + overrides.size() + ")");
+            println("Extracting " + override.getPath() + " (" + (i[0] + 1) + "/" + overrides.size() + ")");
             destFile.getParentFile().mkdirs();
             final String extractFileSize = GeneralUtilKt.getHumanFileSize(override.getSize());
             SwingUtilities.invokeLater(() -> {
@@ -626,7 +610,7 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                 singleDownloadBar.setString("Extracting override... 0 B / " + extractFileSize);
             });
             try (InputStream is = new TrackingInputStream(
-                packZip.getInputStream(override),
+                override.openInputStream(),
                 read -> SwingUtilities.invokeLater(() -> {
                     singleDownloadBar.setValue(GeneralUtilKt.toIntClamped(read));
                     singleDownloadBar.setString("Extracting override... " + GeneralUtilKt.getHumanFileSize(read) + " / " + extractFileSize);

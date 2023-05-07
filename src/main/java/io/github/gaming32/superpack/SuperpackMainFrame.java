@@ -4,6 +4,7 @@ import com.jthemedetecor.OsThemeDetector;
 import io.github.gaming32.superpack.jxtabbedpane.AbstractTabRenderer;
 import io.github.gaming32.superpack.jxtabbedpane.JXTabbedPane;
 import io.github.gaming32.superpack.labrinth.ModrinthId;
+import io.github.gaming32.superpack.modpack.Modpack;
 import io.github.gaming32.superpack.tabs.*;
 import io.github.gaming32.superpack.util.GeneralUtilKt;
 import io.github.gaming32.superpack.util.HasLogger;
@@ -19,6 +20,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.zip.ZipFile;
 
 public final class SuperpackMainFrame extends JFrame implements HasLogger {
     private static final Logger LOGGER = GeneralUtilKt.getLogger();
@@ -167,7 +169,11 @@ public final class SuperpackMainFrame extends JFrame implements HasLogger {
     }
 
     public void openInstallPack(File file) throws IOException {
-        openInstallPack(new InstallPackTab(this, file));
+        try {
+            openInstallPack(new InstallPackTab(this, Modpack.open(new ZipFile(file))));
+        } catch (IllegalArgumentException e) {
+            GeneralUtilKt.showErrorMessage(this, e.getLocalizedMessage());
+        }
     }
 
     public void openOnModrinth(ModrinthId projectId) {

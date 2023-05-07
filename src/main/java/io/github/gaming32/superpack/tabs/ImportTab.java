@@ -2,6 +2,7 @@ package io.github.gaming32.superpack.tabs;
 
 import io.github.gaming32.superpack.FileDialogs;
 import io.github.gaming32.superpack.SuperpackMainFrame;
+import io.github.gaming32.superpack.modpack.Modpack;
 import io.github.gaming32.superpack.util.GeneralUtilKt;
 import io.github.gaming32.superpack.util.HasLogger;
 import kotlin.Unit;
@@ -13,6 +14,7 @@ import javax.swing.GroupLayout.Alignment;
 import java.awt.*;
 import java.io.File;
 import java.io.IOException;
+import java.util.zip.ZipFile;
 
 public final class ImportTab extends JPanel implements HasLogger {
     public static final Logger LOGGER = GeneralUtilKt.getLogger();
@@ -49,7 +51,7 @@ public final class ImportTab extends JPanel implements HasLogger {
                 return;
             }
             try {
-                parent.openInstallPack(new InstallPackTab(parent, packFile));
+                parent.openInstallPack(new InstallPackTab(parent, Modpack.open(new ZipFile(packFile))));
             } catch (IOException e) {
                 GeneralUtilKt.showErrorMessage(this, e);
             }

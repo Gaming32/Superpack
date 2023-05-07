@@ -6,6 +6,8 @@ import io.github.gaming32.superpack.ProgressDialog;
 import io.github.gaming32.superpack.SuperpackKt;
 import io.github.gaming32.superpack.SuperpackMainFrame;
 import io.github.gaming32.superpack.labrinth.*;
+import io.github.gaming32.superpack.modpack.Modpack;
+import io.github.gaming32.superpack.modpack.modrinth.ConversionsKt;
 import io.github.gaming32.superpack.util.*;
 import kotlin.Unit;
 import kotlin.text.Charsets;
@@ -28,6 +30,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import java.util.zip.ZipFile;
 
 import static io.github.gaming32.superpack.util.GeneralUtilKt.THUMBNAIL_SIZE;
 
@@ -727,14 +730,16 @@ public final class ModrinthTab extends JPanel implements HasLogger, Scrollable {
                                 try {
                                     final InstallPackTab dialog = new InstallPackTab(
                                         parent,
-                                        cacheFile,
+                                        Modpack.open(new ZipFile(cacheFile)),
                                         file.getUrl().toExternalForm(),
                                         file.getFilename()
                                     );
                                     if (defaultSide != null) {
-                                        dialog.setDefaultSide(defaultSide);
+                                        dialog.setDefaultSide(ConversionsKt.getSuperpack(defaultSide));
                                     }
                                     parent.openInstallPack(dialog);
+                                } catch (IllegalArgumentException e) {
+                                    GeneralUtilKt.showErrorMessage(this, e.getLocalizedMessage());
                                 } catch (IOException e) {
                                     GeneralUtilKt.showErrorMessage(this, e);
                                 }
