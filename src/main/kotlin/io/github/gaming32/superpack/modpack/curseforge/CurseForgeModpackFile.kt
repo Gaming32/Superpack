@@ -15,14 +15,14 @@ import java.util.concurrent.CompletableFuture
 
 class CurseForgeModpackFile(json: JsonObject) : ModpackFile {
     private val modId = json["projectID"].asInt
-    private val fileId = json["fileID"].asInt
+    val fileId = json["fileID"].asInt
     private val required = json["required"].asBoolean
 
     private val modFuture = CompletableFuture<Mod>()
     private val mod by modFuture
 
     private val fileFuture = CompletableFuture<File>()
-    private val file by fileFuture
+    val file by fileFuture
 
     init {
         CF_SEMAPHORE.acquire()

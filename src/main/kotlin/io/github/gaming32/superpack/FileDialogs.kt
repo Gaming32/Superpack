@@ -3,6 +3,7 @@ package io.github.gaming32.superpack
 import com.sun.jna.Platform
 import io.github.gaming32.superpack.modpack.ModpackType
 import io.github.gaming32.superpack.util.selectedSaveFile
+import io.github.gaming32.superpack.util.toFile
 import java.awt.Component
 import java.io.File
 import javax.swing.JFileChooser
@@ -16,9 +17,9 @@ object FileDialogs {
         isAcceptAllFileFilterUsed = false
         resetChoosableFileFilters()
         when { // Use the directory containing .minecraft so that people can select it
-            Platform.isWindows() -> File(System.getenv("APPDATA"))
+            Platform.isWindows() -> System.getenv("APPDATA").toFile()
             Platform.isMac() -> File(System.getProperty("user.home"), "Library/Application Support")
-            else -> File(System.getProperty("user.home"))
+            else -> System.getProperty("user.home").toFile()
         }.takeIf { it.isDirectory }?.let { currentDirectory = it }
     }
 

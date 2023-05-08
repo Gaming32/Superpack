@@ -6,6 +6,7 @@ import io.github.gaming32.superpack.themes.Theme
 import io.github.gaming32.superpack.themes.Themes
 import io.github.gaming32.superpack.util.div
 import io.github.gaming32.superpack.util.showErrorMessage
+import io.github.gaming32.superpack.util.toFile
 import io.github.gaming32.superpack.util.toHexString
 import io.github.oshai.KotlinLogging
 import java.io.File
@@ -63,7 +64,7 @@ fun main(args: Array<String>) {
         mainFrame.isVisible = true
         if (args.isNotEmpty()) {
             try {
-                mainFrame.openInstallPack(File(args[0]))
+                mainFrame.openInstallPack(args[0].toFile())
             } catch (e: Exception) {
                 showErrorMessage(mainFrame, "Failed to open file automatically", e)
             }

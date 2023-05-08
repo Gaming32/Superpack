@@ -2,7 +2,7 @@ package io.github.gaming32.superpack.modpack.curseforge
 
 import com.google.gson.JsonParser
 import io.github.gaming32.superpack.modpack.*
-import java.io.File
+import io.github.gaming32.superpack.util.toFile
 import java.util.zip.ZipFile
 
 class CurseForgeModpack(private val zipFile: ZipFile) : Modpack {
@@ -21,7 +21,7 @@ class CurseForgeModpack(private val zipFile: ZipFile) : Modpack {
 
     override val description get() = null
 
-    override val path = File(zipFile.name)
+    override val path = zipFile.name.toFile()
 
     override val allFiles by lazy { index["files"].asJsonArray.map { CurseForgeModpackFile(it.asJsonObject) } }
 

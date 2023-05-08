@@ -328,3 +328,20 @@ operator fun <V> Future<V>.getValue(thisRef: Any?, property: KProperty<*>): V = 
 inline fun <T, A, B> build(value: T, a: T.() -> A, b: A.() -> B) = b(a(value))
 
 inline fun <T, A, B, C> build(value: T, a: T.() -> A, b: A.() -> B, c: B.() -> C) = c(b(a(value)))
+
+@Suppress("NOTHING_TO_INLINE")
+inline fun String.toFile() = File(this)
+
+fun getDownloadsFolder(): File = if (Platform.isWindows()) {
+    WindowsUtil.getDownloadsFolder()
+} else try {
+    ProcessBuilder("xdg-user-dir", "DOWNLOAD")
+        .start()
+        .inputStream
+        .reader()
+        .use { it.readText() }
+        .substringBeforeLast('\n')
+        .toFile()
+} catch (e: IOException) {
+    System.getProperty("user.home").toFile() / "Downloads"
+}

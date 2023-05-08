@@ -5,7 +5,7 @@ import io.github.gaming32.superpack.modpack.Modpack
 import io.github.gaming32.superpack.modpack.ModpackType
 import io.github.gaming32.superpack.modpack.Side
 import io.github.gaming32.superpack.modpack.ZipEntryFileOverride
-import java.io.File
+import io.github.gaming32.superpack.util.toFile
 import java.util.zip.ZipFile
 
 class ModrinthModpack(private val zipFile: ZipFile) : Modpack {
@@ -19,7 +19,7 @@ class ModrinthModpack(private val zipFile: ZipFile) : Modpack {
 
     override val description: String? get() = mrpack.packIndex.summary
 
-    override val path = File(zipFile.name)
+    override val path = zipFile.name.toFile()
 
     override val allFiles = mrpack.allFiles.map(::ModrinthModpackFile)
 

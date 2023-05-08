@@ -24,10 +24,8 @@ import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
-import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -549,84 +547,18 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                     continue;
                 }
                 boolean success = false;
-                final String downloadFileSize = GeneralUtilKt.getHumanFileSize(file.getSize());
                 for (URL downloadUrl : file.getDownloads()) {
-                    if (parallelDownloadCount == 1) {
-                        println("   Downloading " + downloadUrl);
-                    }
-                    SwingUtilities.invokeLater(() -> {
-                        if (progressBar == null) return;
-                        progressBar.setMaximum(GeneralUtilKt.toIntClamped(file.getSize()));
-                        progressBar.setValue(0);
-                        progressBar.setString("Downloading " + progressName + "... 0 B / " + downloadFileSize);
-                    });
-                    digest.reset();
-                    long downloadSize;
-                    try (InputStream is = new TrackingInputStream(
-                        new DigestInputStream(SimpleHttp.stream(downloadUrl), digest),
-                        read -> SwingUtilities.invokeLater(() -> {
-                            if (progressBar == null) return;
-                            progressBar.setValue(GeneralUtilKt.toIntClamped(read));
-                            progressBar.setString(
-                                "Downloading " + progressName + "... " + GeneralUtilKt.getHumanFileSize(read) + " / " + downloadFileSize
-                            );
-                        })
-                    )) {
-                        downloadSize = Files.copy(is, destPath.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                    } catch (IOException e) {
-                        if (parallelDownloadCount == 1) {
-                            println("      Failed to download " + downloadUrl + ": " + e);
-                        } else {
-                            println("Failed to download " + downloadUrl + ": " + e);
-                        }
-                        continue;
-                    }
-                    if (parallelDownloadCount == 1) {
-                        println("      Downloaded " + GeneralUtilKt.getHumanFileSizeExtended(downloadSize));
-                    }
-                    if (downloadSize != file.getSize()) {
-                        if (parallelDownloadCount == 1) {
-                            println(
-                                "         ERROR: File size doesn't match! Expected " +
-                                    GeneralUtilKt.getHumanFileSizeExtended(file.getSize())
-                            );
-                        } else {
-                            println(
-                                "ERROR: File size for " + file.getPath() + " doesn't match! Expected " +
-                                    GeneralUtilKt.getHumanFileSizeExtended(file.getSize())
-                            );
-                        }
-                        continue;
-                    }
-                    byte[] hash1 = digest.getDigests()[0].digest();
-                    byte[] hash2 = file.getHashes().get("sha1");
-                    if (parallelDownloadCount == 1) {
-                        println("      SHA-1: " + GeneralUtilKt.toHexString(hash1));
-                    }
-                    if (!Arrays.equals(hash1, hash2)) {
-                        if (parallelDownloadCount == 1) {
-                            println("         ERROR: SHA-1 doesn't match! Expected " + GeneralUtilKt.toHexString(hash2));
-                        } else {
-                            println("ERROR: SHA-1 for " + file.getPath() + " doesn't match! Expected " + GeneralUtilKt.toHexString(hash2));
-                        }
-                        continue;
-                    }
-                    hash1 = digest.getDigests()[1].digest();
-                    hash2 = file.getHashes().get(pack.getType().getSecondaryHash().getApiId());
-                    if (parallelDownloadCount == 1) {
-                        println("      " + secondaryHash + ": " + GeneralUtilKt.toHexString(hash1));
-                    }
-                    if (!Arrays.equals(hash1, hash2)) {
-                        if (parallelDownloadCount == 1) {
-                            println("         ERROR: " + secondaryHash + " doesn't match! Expected " + GeneralUtilKt.toHexString(hash2));
-                        } else {
-                            println(
-                                "ERROR: " + secondaryHash + " for " + file.getPath() + " doesn't match! Expected " +
-                                    GeneralUtilKt.toHexString(hash2)
-                            );
-                        }
-                        continue;
-                    }
+                    final long downloadSize = download(
+                        parallelDownloadCount,
+                        "   ",
+                        downloadUrl,
+                        progressBar,
+                        digest,
+                        file,
+                        destPath,
+                        secondaryHash
+                    );
+                    if (downloadSize < 0) continue; // Error
                     totalDownloadSize.addAndGet(downloadSize);
                     downloadedCount.incrementAndGet();
                     success = true;
@@ -710,44 +642,175 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
             extractOverrides(outputDirFile, env);
         }
 
-        println("\nInstall finished!");
         if (!failedToDownload.isEmpty()) {
-            final StringBuilder curseForgeMessage = new StringBuilder("<html>Please download the following files manually:<ul>");
-            boolean anyCf = false;
-            println(failedToDownload.size() + " file(s) failed to download:");
+            final List<CurseForgeModpackFile> becauseOfCf = new ArrayList<>();
+            println("\n" + failedToDownload.size() + " file(s) failed to download:");
             for (final ModpackFile file : failedToDownload) {
                 println("  + " + file.getPath());
                 if (pack.getType() == ModpackType.CURSEFORGE && file.getDownloads().isEmpty()) {
-                    anyCf = true;
-                    curseForgeMessage.append("<li><a href=\"")
-                        .append(((CurseForgeModpackFile)file).getBrowserDownloadUrl())
-                        .append("\">")
-                        .append(file.getPath())
-                        .append("</a></li>");
+                    becauseOfCf.add((CurseForgeModpackFile)file);
                 }
             }
-            if (anyCf) {
-                SwingUtilities.invokeAndWait(() -> JOptionPane.showMessageDialog(
+            if (!becauseOfCf.isEmpty()) {
+                final Map<Integer, String> listElements = new LinkedHashMap<>();
+                for (final CurseForgeModpackFile file : becauseOfCf) {
+                    listElements.put(
+                        file.getFileId(),
+                        "<li><a href=\"" + file.getBrowserDownloadUrl() + "\">" + file.getPath() + "</a></li>"
+                    );
+                }
+                final File downloadsDir = GeneralUtilKt.getDownloadsFolder();
+                final String messageHeader = "<html>Please download the following files manually to " +
+                    downloadsDir +
+                    ".<ul>";
+                final String messageFooter = "</ul></html>";
+                final JEditorPane pane = new JEditorPane(
+                    "text/html",
+                    messageHeader + String.join("", listElements.values()) + messageFooter
+                );
+                pane.addHyperlinkListener(e -> {
+                    if (e.getEventType() == HyperlinkEvent.EventType.ACTIVATED) {
+                        try {
+                            Desktop.getDesktop().browse(e.getURL().toURI());
+                        } catch (Exception e1) {
+                            LOGGER.error("Failed to open link", e1);
+                        }
+                    }
+                });
+                pane.setEditable(false);
+                pane.setBorder(null);
+                SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(
                     this,
-                    new JEditorPane("text/html", curseForgeMessage.append("</ul></html>").toString()) {{
-                        addHyperlinkListener(e -> {
-                            if (e.getEventType() == HyperlinkEvent.EventType.ACTIVATED) {
-                                try {
-                                    Desktop.getDesktop().browse(e.getURL().toURI());
-                                } catch (Exception e1) {
-                                    LOGGER.error("Failed to open link", e1);
-                                }
-                            }
-                        });
-                        setEditable(false);
-                        setBorder(null);
-                    }},
+                    pane,
                     GeneralUtilKt.getTitle(this),
                     JOptionPane.WARNING_MESSAGE
                 ));
+                final MultiMessageDigest digest = new MultiMessageDigest(
+                    GeneralUtilKt.getSha1(),
+                    MessageDigest.getInstance(secondaryHash)
+                );
+                while (!listElements.isEmpty()) {
+                    for (final CurseForgeModpackFile file : becauseOfCf) {
+                        if (!listElements.containsKey(file.getFileId())) continue;
+                        final File downloadDest = new File(downloadsDir, file.getFile().fileName());
+                        if (!downloadDest.exists()) continue;
+                        if (download(
+                            1,
+                            "",
+                            downloadDest.toURI().toURL(),
+                            subDownloadBars[0],
+                            digest,
+                            file,
+                            new File(outputDirFile, file.getPath()), // Already validated
+                            secondaryHash
+                        ) >= 0) {
+                            if (!downloadDest.delete()) {
+                                println("Failed to delete " + downloadDest);
+                            }
+                            listElements.remove(file.getFileId());
+                            pane.setText(messageHeader + String.join("", listElements.values()) + messageFooter);
+                        }
+                    }
+                    //noinspection BusyWait
+                    Thread.sleep(1000);
+                }
+                pane.setText(messageHeader + "<li>All done!</li>" + messageFooter);
             }
         }
+        println("\nInstall finished!");
         return true;
+    }
+
+    private long download(
+        int parallelDownloadCount,
+        String indent,
+        URL downloadUrl,
+        JProgressBar progressBar,
+        MultiMessageDigest digest,
+        ModpackFile file,
+        File destPath,
+        String secondaryHash
+    ) throws Exception {
+        final String progressName = parallelDownloadCount == 1 ? "file" : file.getPath();
+        final String downloadFileSize = GeneralUtilKt.getHumanFileSize(file.getSize());
+
+        if (parallelDownloadCount == 1) {
+            println(indent + "Downloading " + downloadUrl);
+        }
+        SwingUtilities.invokeLater(() -> {
+            if (progressBar == null) return;
+            progressBar.setMaximum(GeneralUtilKt.toIntClamped(file.getSize()));
+            progressBar.setValue(0);
+            progressBar.setString("Downloading " + progressName + "... 0 B / " + downloadFileSize);
+        });
+        digest.reset();
+        long downloadSize;
+        try (InputStream is = new TrackingInputStream(
+            new DigestInputStream(SimpleHttp.stream(downloadUrl), digest),
+            read -> SwingUtilities.invokeLater(() -> {
+                if (progressBar == null) return;
+                progressBar.setValue(GeneralUtilKt.toIntClamped(read));
+                progressBar.setString(
+                    "Downloading " + progressName + "... " + GeneralUtilKt.getHumanFileSize(read) + " / " + downloadFileSize
+                );
+            })
+        )) {
+            downloadSize = Files.copy(is, destPath.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            if (parallelDownloadCount == 1) {
+                println(indent + "   Failed to download " + downloadUrl + ": " + e);
+            } else {
+                println("Failed to download " + downloadUrl + ": " + e);
+            }
+            return -1L;
+        }
+        if (parallelDownloadCount == 1) {
+            println(indent + "   Downloaded " + GeneralUtilKt.getHumanFileSizeExtended(downloadSize));
+        }
+        if (downloadSize != file.getSize()) {
+            if (parallelDownloadCount == 1) {
+                println(
+                    indent + "      ERROR: File size doesn't match! Expected " +
+                        GeneralUtilKt.getHumanFileSizeExtended(file.getSize())
+                );
+            } else {
+                println(
+                    "ERROR: File size for " + file.getPath() + " doesn't match! Expected " +
+                        GeneralUtilKt.getHumanFileSizeExtended(file.getSize())
+                );
+            }
+            return -1L;
+        }
+        byte[] hash1 = digest.getDigests()[0].digest();
+        byte[] hash2 = file.getHashes().get("sha1");
+        if (parallelDownloadCount == 1) {
+            println(indent + "   SHA-1: " + GeneralUtilKt.toHexString(hash1));
+        }
+        if (!Arrays.equals(hash1, hash2)) {
+            if (parallelDownloadCount == 1) {
+                println(indent + "      ERROR: SHA-1 doesn't match! Expected " + GeneralUtilKt.toHexString(hash2));
+            } else {
+                println("ERROR: SHA-1 for " + file.getPath() + " doesn't match! Expected " + GeneralUtilKt.toHexString(hash2));
+            }
+            return -1L;
+        }
+        hash1 = digest.getDigests()[1].digest();
+        hash2 = file.getHashes().get(pack.getType().getSecondaryHash().getApiId());
+        if (parallelDownloadCount == 1) {
+            println(indent + "   " + secondaryHash + ": " + GeneralUtilKt.toHexString(hash1));
+        }
+        if (!Arrays.equals(hash1, hash2)) {
+            if (parallelDownloadCount == 1) {
+                println(indent + "      ERROR: " + secondaryHash + " doesn't match! Expected " + GeneralUtilKt.toHexString(hash2));
+            } else {
+                println(
+                    "ERROR: " + secondaryHash + " for " + file.getPath() + " doesn't match! Expected " +
+                        GeneralUtilKt.toHexString(hash2)
+                );
+            }
+            return -1L;
+        }
+        return downloadSize;
     }
 
     private void resetDownloadBars(int count, int subBarCount) {
