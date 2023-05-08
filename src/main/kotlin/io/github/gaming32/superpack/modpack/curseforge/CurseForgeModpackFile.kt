@@ -22,7 +22,7 @@ class CurseForgeModpackFile(json: JsonObject) : ModpackFile {
     private val mod by modFuture
 
     private val fileFuture = CompletableFuture<File>()
-    val file by fileFuture
+    val file: File by fileFuture
 
     init {
         CF_SEMAPHORE.acquire()
@@ -64,7 +64,13 @@ class CurseForgeModpackFile(json: JsonObject) : ModpackFile {
         getCacheFilePath(file.hashes.first { it.algo == HashAlgo.SHA1 }.value.parseHexString())
     }
 
-    override val downloads by lazy { file.downloadUrl?.let { listOf(URL(it)) } ?: listOf() }
+    override val downloads by lazy {
+        file.downloadUrl
+            ?.replace(" ", "%20") // Gotta love CF's API giving an unsupported URL
+            ?.let(::URL)
+            ?.let(::listOf)
+            ?: listOf()
+    }
 
     override val hashes by lazy { file.hashes.associate { it.algo.name.lowercase() to it.value.parseHexString() } }
 

@@ -48,12 +48,14 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
     private Map<String, JCheckBox> optionalCheckboxes;
     private JButton viewOnModrinthButton;
     private JButton installButton;
+    private JCheckBox skipOverrides;
     private JTextPane installOutput;
 
     private JPanel downloadBars;
     private JProgressBar overallDownloadBar;
     private final JProgressBar[] subDownloadBars = new JProgressBar[15];
 
+    private boolean hashedProject;
     private ModrinthId modrinthProjectId;
 
     public InstallPackTab(SuperpackMainFrame parent, Modpack pack, String selectedFilename, String friendlyName) throws IOException {
@@ -119,21 +121,15 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
         optionalCheckboxes = new HashMap<>();
         populateOptionalCheckboxes();
 
+        hashProjectAndLookup(() -> {
+            if (viewOnModrinthButton != null && modrinthProjectId != null) {
+                viewOnModrinthButton.setEnabled(true);
+            }
+        });
         if (pack.getType() == ModpackType.MODRINTH) {
             viewOnModrinthButton = new JButton("View on Modrinth");
             viewOnModrinthButton.setEnabled(false);
-            getModrinthProjectId(() -> {
-                if (modrinthProjectId != null) {
-                    viewOnModrinthButton.setEnabled(true);
-                }
-            });
-            viewOnModrinthButton.addActionListener(ev -> {
-                if (modrinthProjectId == null) {
-                    getModrinthProjectId(this::openOnModrinth);
-                    return;
-                }
-                openOnModrinth();
-            });
+            viewOnModrinthButton.addActionListener(ev -> hashProjectAndLookup(this::openOnModrinth));
         }
 
         installButton = new JButton("Install!");
@@ -144,6 +140,8 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
             installThread.setDaemon(true);
             installThread.start();
         });
+
+        skipOverrides = new JCheckBox("Skip Overrides");
 
         installOutput = new NonWrappingTextPane();
         installOutput.setEditable(false);
@@ -226,9 +224,13 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                         );
                     },
                     g1 -> g1.addComponent(
-                        installButton,
-                        GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE
-                    )
+                            installButton,
+                            GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE
+                        )
+                        .addComponent(
+                            skipOverrides,
+                            GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE
+                        )
                 ))
                 .addComponent(outputScrollPane)
                 .addComponent(downloadBars)
@@ -291,6 +293,10 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                             installButton,
                             GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE
                         )
+                        .addComponent(
+                            skipOverrides,
+                            GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE
+                        )
                 ))
                 .addComponent(outputScrollPane)
                 .addComponent(downloadBars)
@@ -321,8 +327,8 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
         }
     }
 
-    private void getModrinthProjectId(Runnable completionAction) {
-        if (modrinthProjectId != null) {
+    private void hashProjectAndLookup(Runnable completionAction) {
+        if (modrinthProjectId != null || (hashedProject && viewOnModrinthButton == null)) {
             completionAction.run();
             return;
         }
@@ -342,12 +348,17 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                 }
                 savedPack.setName(pack.getName() + ' ' + pack.getVersion());
                 savedPack.setDescription(pack.getDescription());
+                savedPack.setType(pack.getType());
                 savedPack.setFilename(friendlyName);
                 savedPack.setPath(pack.getPath());
                 MyPacks.INSTANCE.addPack(savedPack);
                 MyPacks.INSTANCE.setDirty();
                 SuperpackKt.saveMyPacks();
             });
+            if (pack.getType() != ModpackType.MODRINTH) {
+                SwingUtilities.invokeLater(completionAction);
+                return;
+            }
             final Version versionData;
             try (Reader reader = new InputStreamReader(SimpleHttp.stream(SimpleHttp.createUrl(
                 SuperpackKt.MODRINTH_API_ROOT,
@@ -400,6 +411,9 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
             optionalCheckBox.setEnabled(enabled);
         }
         installButton.setEnabled(enabled);
+        if (enabled) {
+            skipOverrides.setEnabled(true);
+        }
     }
 
     private void println(String s) throws InterruptedException {
@@ -467,6 +481,8 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
             );
             if (!proceed[0]) return false;
         }
+
+        final long startTime = System.currentTimeMillis();
 
         final Side env = (Side)side.getSelectedItem();
         println("Creating destination directory...");
@@ -653,19 +669,27 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
             overallDownloadBar.setString("Downloading files... Done!");
         });
 
-        extractOverrides(outputDirFile, null);
-        if (pack.getType().getSupportsSides()) {
-            extractOverrides(outputDirFile, env);
+        SwingUtilities.invokeAndWait(() -> {
+            skipOverrides.setEnabled(false);
+        });
+        if (!skipOverrides.isSelected()) {
+            extractOverrides(outputDirFile, null);
+            if (pack.getType().getSupportsSides()) {
+                extractOverrides(outputDirFile, env);
+            }
         }
+
+        long durationIgnore = 0;
 
         if (!failedToDownload.isEmpty()) {
             final List<CurseForgeModpackFile> becauseOfCf = new ArrayList<>();
             println("\n" + failedToDownload.size() + " file(s) failed to download:");
             for (final ModpackFile file : failedToDownload) {
-                println("  + " + file.getPath());
-                if (pack.getType() == ModpackType.CURSEFORGE && file.getDownloads().isEmpty()) {
+                final boolean wasCf = pack.getType() == ModpackType.CURSEFORGE && file.getDownloads().isEmpty();
+                if (wasCf) {
                     becauseOfCf.add((CurseForgeModpackFile)file);
                 }
+                println("  + " + file.getPath() + (wasCf ? " (blacklisted by author)" : ""));
             }
             if (!becauseOfCf.isEmpty()) {
                 final Map<Integer, String> listElements = new LinkedHashMap<>();
@@ -708,7 +732,7 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                 while (!listElements.isEmpty()) {
                     for (final CurseForgeModpackFile file : becauseOfCf) {
                         if (!listElements.containsKey(file.getFileId())) continue;
-                        final File downloadDest = new File(downloadsDir, file.getFile().fileName());
+                        final File downloadDest = new File(downloadsDir, file.getFile().fileName().replace(' ', '+'));
                         if (!downloadDest.exists()) continue;
                         if (download(
                             1,
@@ -729,11 +753,15 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                     }
                     //noinspection BusyWait
                     Thread.sleep(1000);
+                    durationIgnore += 1000;
                 }
                 pane.setText(messageHeader + "<li>All done!</li>" + messageFooter);
             }
         }
-        println("\nInstall finished!");
+        println(
+            "\nInstall finished in " +
+                GeneralUtilKt.prettyDuration(System.currentTimeMillis() - startTime - durationIgnore) + '!'
+        );
         return true;
     }
 

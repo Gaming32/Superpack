@@ -5,6 +5,7 @@ import io.github.gaming32.superpack.MyPacks;
 import io.github.gaming32.superpack.MyPacks.Modpack;
 import io.github.gaming32.superpack.SuperpackKt;
 import io.github.gaming32.superpack.SuperpackMainFrame;
+import io.github.gaming32.superpack.modpack.ModpackType;
 import io.github.gaming32.superpack.util.GeneralUtilKt;
 import io.github.gaming32.superpack.util.HasLogger;
 import kotlin.Unit;
@@ -21,6 +22,8 @@ import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
+import java.util.EnumMap;
+import java.util.Map;
 
 import static io.github.gaming32.superpack.util.GeneralUtilKt.THUMBNAIL_SIZE;
 
@@ -29,13 +32,16 @@ public final class MyPacksTab extends JPanel implements HasLogger, Scrollable, S
 
     private final SuperpackMainFrame parent;
 
-    private final ImageIcon modrinthIcon;
+    private final Map<ModpackType, ImageIcon> defaultIcons;
 
     public MyPacksTab(SuperpackMainFrame parent) {
         this.parent = parent;
 
-        //noinspection ConstantConditions
-        modrinthIcon = new ImageIcon(getClass().getResource("/modrinth.png"));
+        //noinspection DataFlowIssue
+        defaultIcons = new EnumMap<>(Map.of(
+            ModpackType.MODRINTH, new ImageIcon(getClass().getResource("/modrinth.png")),
+            ModpackType.CURSEFORGE, new ImageIcon(getClass().getResource("/curseforge.png"))
+        ));
 
         setLayout(new GridBagLayout() {{
             defaultConstraints.fill = GridBagConstraints.HORIZONTAL;
@@ -95,7 +101,7 @@ public final class MyPacksTab extends JPanel implements HasLogger, Scrollable, S
             button.setComponentPopupMenu(menu);
             button.addActionListener(installAction);
 
-            final JLabel icon = new JLabel(modrinthIcon);
+            final JLabel icon = new JLabel(defaultIcons.get(pack.getType()));
             if (pack.getIconUrl() != null) {
                 GeneralUtilKt.loadProjectIcon(pack.getIconUrl(), image -> {
                     if (image != null) {

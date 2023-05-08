@@ -345,3 +345,59 @@ fun getDownloadsFolder(): File = if (Platform.isWindows()) {
 } catch (e: IOException) {
     System.getProperty("user.home").toFile() / "Downloads"
 }
+
+const val SECOND = 1000L
+const val MINUTE = 60 * SECOND
+const val HOUR = 60 * MINUTE
+const val DAY = 24 * HOUR
+fun prettyDuration(ms: Long) = buildString {
+    if (ms < SECOND) {
+        append(ms)
+        append("ms")
+        return@buildString
+    }
+    if (ms < MINUTE) {
+        append(ms / 1000.0)
+        append('s')
+        return@buildString
+    }
+
+    var msLeft = ms
+
+    if (msLeft > DAY) {
+        val days = msLeft / DAY
+        append(days)
+        append('d')
+        msLeft -= days * DAY
+        if (msLeft > 0) {
+            append(' ')
+        }
+    }
+
+    if (msLeft > HOUR) {
+        val hours = msLeft / HOUR
+        append(hours)
+        append('h')
+        msLeft -= hours * HOUR
+        if (msLeft > 0) {
+            append(' ')
+        }
+    }
+
+    if (msLeft > MINUTE) {
+        val minutes = msLeft / MINUTE
+        append(minutes)
+        append('m')
+        msLeft -= minutes * MINUTE
+        if (msLeft > 0) {
+            append(' ')
+        }
+    }
+
+    if (msLeft > SECOND) {
+        append(msLeft / SECOND)
+        append('s')
+    }
+
+    // Milliseconds aren't shown
+}
