@@ -77,7 +77,7 @@ public final class SuperpackSettings {
     public static final SuperpackSettings INSTANCE = new SuperpackSettings();
 
     private Theme theme = Themes.DEFAULT;
-    private int parallelDownloadCount = Runtime.getRuntime().availableProcessors(); // This seems like a fine default
+    private int parallelDownloadCount = Runtime.getRuntime().availableProcessors() - 1;
 
     public Theme getTheme() {
         return theme;
