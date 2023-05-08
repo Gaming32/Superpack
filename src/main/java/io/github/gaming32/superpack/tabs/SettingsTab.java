@@ -37,7 +37,6 @@ public final class SettingsTab extends JPanel implements HasLogger, SelectedTabH
             themeWarningLabel.setVisible(false);
 
             final JLabel themeLabel = new JLabel("Theme:");
-
             final JComboBox<Theme> theme = new JComboBox<>(Themes.getThemes());
             theme.setSelectedItem(SuperpackSettings.INSTANCE.getTheme());
             theme.addActionListener(ev -> {
@@ -45,6 +44,16 @@ public final class SettingsTab extends JPanel implements HasLogger, SelectedTabH
                 //noinspection ConstantConditions
                 SuperpackKt.setTheme((Theme)theme.getSelectedItem());
                 SwingUtilities.updateComponentTreeUI(parent);
+            });
+
+            final JLabel pdcLabel = new JLabel("Maximum parallel download count:");
+            final JSpinner parallelDownloadCount = new JSpinner(new SpinnerNumberModel(
+                SuperpackSettings.INSTANCE.getParallelDownloadCount(),
+                1, 128, 1
+            ));
+            parallelDownloadCount.addChangeListener(ev -> {
+                SuperpackSettings.INSTANCE.setParallelDownloadCount((int)parallelDownloadCount.getValue());
+                SuperpackKt.saveSettings();
             });
 
             final GroupLayout layout = new GroupLayout(generalSettings);
@@ -57,6 +66,10 @@ public final class SettingsTab extends JPanel implements HasLogger, SelectedTabH
                     .addComponent(theme)
                 )
                 .addComponent(themeWarningLabel)
+                .addGroup(layout.createSequentialGroup()
+                    .addComponent(pdcLabel)
+                    .addComponent(parallelDownloadCount)
+                )
             );
             layout.setVerticalGroup(layout.createSequentialGroup()
                 .addGroup(layout.createParallelGroup(Alignment.CENTER)
@@ -64,6 +77,10 @@ public final class SettingsTab extends JPanel implements HasLogger, SelectedTabH
                     .addComponent(theme)
                 )
                 .addComponent(themeWarningLabel)
+                .addGroup(layout.createParallelGroup(Alignment.CENTER)
+                    .addComponent(pdcLabel)
+                    .addComponent(parallelDownloadCount)
+                )
             );
             generalSettings.setBorder(BorderFactory.createTitledBorder("General settings"));
 
