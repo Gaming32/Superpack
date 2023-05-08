@@ -519,32 +519,37 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                 }
                 destPath.getParentFile().mkdirs();
                 println("Installing " + file.getPath() + " (" + installedCount.incrementAndGet() + '/' + filesToDownload.size() + ')');
-                if (Files.exists(destPath.toPath()) && Files.size(destPath.toPath()) == file.getSize()) {
-                    digest.getDigests()[0].reset();
-                    try (InputStream is = new DigestInputStream(new FileInputStream(destPath), digest.getDigests()[0])) {
-                        GeneralUtilKt.readAndDiscard(is);
-                    }
-                    if (Arrays.equals(
-                        digest.getDigests()[0].digest(),
-                        file.getHashes().get("sha1")
-                    )) {
-                        if (parallelDownloadCount == 1) {
-                            println("   Skipping already complete file " + file.getPath());
-                        } else {
-                            println("Skipping already complete file " + file.getPath());
+                final File cacheFile;
+                if (file.getHashes().containsKey("sha1")) {
+                    if (Files.exists(destPath.toPath()) && Files.size(destPath.toPath()) == file.getSize()) {
+                        digest.getDigests()[0].reset();
+                        try (InputStream is = new DigestInputStream(new FileInputStream(destPath), digest.getDigests()[0])) {
+                            GeneralUtilKt.readAndDiscard(is);
                         }
+                        if (Arrays.equals(
+                            digest.getDigests()[0].digest(),
+                            file.getHashes().get("sha1")
+                        )) {
+                            if (parallelDownloadCount == 1) {
+                                println("   Skipping already complete file " + file.getPath());
+                            } else {
+                                println("Skipping already complete file " + file.getPath());
+                            }
+                            continue;
+                        }
+                    }
+                    cacheFile = SuperpackKt.getCacheFilePath(file.getHashes().get("sha1"));
+                    if (cacheFile.isFile() && cacheFile.length() == file.getSize()) {
+                        if (parallelDownloadCount == 1) {
+                            println("   File found in cache at " + cacheFile);
+                        } else {
+                            println("File " + file.getPath() + " found in cache at " + cacheFile);
+                        }
+                        Files.copy(cacheFile.toPath(), destPath.toPath(), StandardCopyOption.REPLACE_EXISTING);
                         continue;
                     }
-                }
-                final File cacheFile = SuperpackKt.getCacheFilePath(file.getHashes().get("sha1"));
-                if (cacheFile.isFile() && cacheFile.length() == file.getSize()) {
-                    if (parallelDownloadCount == 1) {
-                        println("   File found in cache at " + cacheFile);
-                    } else {
-                        println("File " + file.getPath() + " found in cache at " + cacheFile);
-                    }
-                    Files.copy(cacheFile.toPath(), destPath.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                    continue;
+                } else {
+                    cacheFile = null;
                 }
                 boolean success = false;
                 for (URL downloadUrl : file.getDownloads()) {
@@ -565,8 +570,10 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                     break;
                 }
                 if (success) {
-                    cacheFile.getParentFile().mkdirs();
-                    Files.copy(destPath.toPath(), cacheFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                    if (cacheFile != null) {
+                        cacheFile.getParentFile().mkdirs();
+                        Files.copy(destPath.toPath(), cacheFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                    }
                 } else {
                     failedToDownload.add(file);
                     if (parallelDownloadCount == 1) {
@@ -604,12 +611,18 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
             downloadThreads[i].start();
         }
 
+        final Set<Thread> failedThreads = new HashSet<>();
         while (true) {
             LockSupport.park();
             int doneCount = 0;
+            int i = -1;
             for (final Object result : results) {
+                final Thread thread = downloadThreads[++i];
                 if (result instanceof Exception e) {
-                    throw e;
+                    failedThreads.add(thread);
+                    results[i] = Unit.INSTANCE;
+                    LOGGER.error("Error in thread {}", thread.getName(), e);
+                    continue;
                 }
                 if (result == Unit.INSTANCE) {
                     doneCount++;
@@ -625,6 +638,9 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
         }
         for (final Thread thread : downloadThreads) {
             thread.join();
+        }
+        if (failedThreads.size() == downloadThreads.length) {
+            throw new IllegalStateException("All threads errored!");
         }
 
         println(
@@ -781,35 +797,45 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
             }
             return -1L;
         }
-        byte[] hash1 = digest.getDigests()[0].digest();
-        byte[] hash2 = file.getHashes().get("sha1");
-        if (parallelDownloadCount == 1) {
-            println(indent + "   SHA-1: " + GeneralUtilKt.toHexString(hash1));
-        }
-        if (!Arrays.equals(hash1, hash2)) {
+
+        byte[] hash1, hash2;
+
+        if (file.getHashes().containsKey("sha1")) {
+            hash1 = digest.getDigests()[0].digest();
+            hash2 = file.getHashes().get("sha1");
             if (parallelDownloadCount == 1) {
-                println(indent + "      ERROR: SHA-1 doesn't match! Expected " + GeneralUtilKt.toHexString(hash2));
-            } else {
-                println("ERROR: SHA-1 for " + file.getPath() + " doesn't match! Expected " + GeneralUtilKt.toHexString(hash2));
+                println(indent + "   SHA-1: " + GeneralUtilKt.toHexString(hash1));
             }
-            return -1L;
+            if (!Arrays.equals(hash1, hash2)) {
+                if (parallelDownloadCount == 1) {
+                    println(indent + "      ERROR: SHA-1 doesn't match! Expected " + GeneralUtilKt.toHexString(hash2));
+                } else {
+                    println("ERROR: SHA-1 for " + file.getPath() + " doesn't match! Expected " + GeneralUtilKt.toHexString(hash2));
+                }
+                return -1L;
+            }
         }
-        hash1 = digest.getDigests()[1].digest();
-        hash2 = file.getHashes().get(pack.getType().getSecondaryHash().getApiId());
-        if (parallelDownloadCount == 1) {
-            println(indent + "   " + secondaryHash + ": " + GeneralUtilKt.toHexString(hash1));
-        }
-        if (!Arrays.equals(hash1, hash2)) {
+
+        final String secondaryHashApi = pack.getType().getSecondaryHash().getApiId();
+        if (file.getHashes().containsKey(secondaryHashApi)) {
+            hash1 = digest.getDigests()[1].digest();
+            hash2 = file.getHashes().get(pack.getType().getSecondaryHash().getApiId());
             if (parallelDownloadCount == 1) {
-                println(indent + "      ERROR: " + secondaryHash + " doesn't match! Expected " + GeneralUtilKt.toHexString(hash2));
-            } else {
-                println(
-                    "ERROR: " + secondaryHash + " for " + file.getPath() + " doesn't match! Expected " +
-                        GeneralUtilKt.toHexString(hash2)
-                );
+                println(indent + "   " + secondaryHash + ": " + GeneralUtilKt.toHexString(hash1));
             }
-            return -1L;
+            if (!Arrays.equals(hash1, hash2)) {
+                if (parallelDownloadCount == 1) {
+                    println(indent + "      ERROR: " + secondaryHash + " doesn't match! Expected " + GeneralUtilKt.toHexString(hash2));
+                } else {
+                    println(
+                        "ERROR: " + secondaryHash + " for " + file.getPath() + " doesn't match! Expected " +
+                            GeneralUtilKt.toHexString(hash2)
+                    );
+                }
+                return -1L;
+            }
         }
+
         return downloadSize;
     }
 
