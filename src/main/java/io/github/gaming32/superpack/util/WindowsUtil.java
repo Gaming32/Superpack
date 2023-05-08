@@ -22,8 +22,14 @@ public final class WindowsUtil {
     private WindowsUtil() {
     }
 
+    private static void coInitializeEx() {
+        // Use the same flags as AWT
+        // https://github.com/openjdk/jdk/blob/0deb648985b018653ccdaf193dc13b3cf21c088a/src/java.desktop/windows/native/libawt/windows/awt_Desktop.cpp#L88-L89
+        Ole32.INSTANCE.CoInitializeEx(null, Ole32.COINIT_APARTMENTTHREADED | Ole32.COINIT_DISABLE_OLE1DDE);
+    }
+
     public static void browseFileDirectory(File file) {
-        Ole32.INSTANCE.CoInitializeEx(null, Ole32.COINIT_MULTITHREADED);
+        coInitializeEx();
 
         final PointerByReference fileName = new PointerByReference();
         Shell32.INSTANCE.SHParseDisplayName(
@@ -49,7 +55,7 @@ public final class WindowsUtil {
     }
 
     public static File getDownloadsFolder() {
-        Ole32.INSTANCE.CoInitializeEx(null, Ole32.COINIT_MULTITHREADED);
+        coInitializeEx();
 
         final PointerByReference path = new PointerByReference();
 
