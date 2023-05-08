@@ -2,6 +2,7 @@ package io.github.gaming32.superpack
 
 import com.sun.jna.Platform
 import io.github.gaming32.superpack.modpack.ModpackType
+import io.github.gaming32.superpack.util.getDownloadsFolder
 import io.github.gaming32.superpack.util.selectedSaveFile
 import io.github.gaming32.superpack.util.toFile
 import java.awt.Component
@@ -9,7 +10,9 @@ import java.io.File
 import javax.swing.JFileChooser
 
 object FileDialogs {
-    private val FILE_CHOOSER = JFileChooser()
+    private val FILE_CHOOSER = JFileChooser().apply {
+        currentDirectory = getDownloadsFolder()
+    }
     private val OUTPUT_FILE_CHOOSER = JFileChooser().apply {
         fileSelectionMode = JFileChooser.DIRECTORIES_ONLY
         isMultiSelectionEnabled = false
