@@ -32,6 +32,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.LockSupport;
+import java.util.zip.ZipFile;
 
 public final class InstallPackTab extends JPanel implements HasLogger, AutoCloseable {
     private static final Logger LOGGER = GeneralUtilKt.getLogger();
@@ -355,6 +356,7 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                 MyPacks.INSTANCE.setDirty();
                 SuperpackKt.saveMyPacks();
             });
+            hashedProject = true;
             if (pack.getType() != ModpackType.MODRINTH) {
                 SwingUtilities.invokeLater(completionAction);
                 return;
@@ -460,7 +462,6 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
     }
 
     private boolean doInstall0() throws Exception {
-        final int parallelDownloadCount = SuperpackSettings.INSTANCE.getParallelDownloadCount();
         if (outputDir.getText().isEmpty()) {
             println("Please specify a destination directory");
             return false;
@@ -495,6 +496,7 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
         final AtomicInteger downloadedCount = new AtomicInteger();
         assert env != null;
         List<ModpackFile> filesToDownload = pack.getAllFiles(env);
+        final int parallelDownloadCount = Math.min(filesToDownload.size(), SuperpackSettings.INSTANCE.getParallelDownloadCount());
         resetDownloadBars(filesToDownload.size(), parallelDownloadCount);
 
         final List<ModpackFile> failedToDownload = new CopyOnWriteArrayList<>();
@@ -514,10 +516,9 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                     final int count = installedCount.get();
                     overallDownloadBar.setValue(count);
                     overallDownloadBar.setString("Downloading files... " + count + '/' + filesToDownload.size());
-                    if (progressBar != null) {
-                        progressBar.setValue(0);
-                        progressBar.setString("Downloading " + progressName + "...");
-                    }
+                    if (progressBar == null) return;
+                    progressBar.setValue(0);
+                    progressBar.setString("Downloading " + progressName + "...");
                 });
                 if (file.getCompatibility(env) == Compatibility.OPTIONAL) {
                     final JCheckBox optionalCheckBox = optionalCheckboxes.get(file.getPath());
@@ -606,58 +607,7 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
             }
         };
 
-        final Thread installThread = Thread.currentThread();
-        final Thread[] downloadThreads = new Thread[parallelDownloadCount];
-        final Object[] results = new Object[parallelDownloadCount];
-        for (int i = 0; i < parallelDownloadCount; i++) {
-            final int tid = i;
-            downloadThreads[i] = new Thread(() -> {
-                try {
-                    downloadBody.run(tid);
-                    results[tid] = Unit.INSTANCE;
-                } catch (InterruptedException e) {
-                    // Ignore
-                } catch (Exception e) {
-                    results[tid] = e;
-                }
-                subDownloadBars[tid].setVisible(false);
-                LockSupport.unpark(installThread);
-            }, "InstallThread-" + i);
-            downloadThreads[i].setDaemon(true);
-            downloadThreads[i].start();
-        }
-
-        final Set<Thread> failedThreads = new HashSet<>();
-        while (true) {
-            LockSupport.park();
-            int doneCount = 0;
-            int i = -1;
-            for (final Object result : results) {
-                final Thread thread = downloadThreads[++i];
-                if (result instanceof Exception e) {
-                    failedThreads.add(thread);
-                    results[i] = Unit.INSTANCE;
-                    LOGGER.error("Error in thread {}", thread.getName(), e);
-                    continue;
-                }
-                if (result == Unit.INSTANCE) {
-                    doneCount++;
-                    continue;
-                }
-                if (result == null) continue;
-                throw new AssertionError("results array has unknown value " + result);
-            }
-            if (doneCount == results.length) break;
-        }
-        for (final Thread thread : downloadThreads) {
-            thread.interrupt();
-        }
-        for (final Thread thread : downloadThreads) {
-            thread.join();
-        }
-        if (failedThreads.size() == downloadThreads.length) {
-            throw new IllegalStateException("All threads errored!");
-        }
+        runParallel(downloadBody, parallelDownloadCount);
 
         println(
             "Downloaded a total of " +
@@ -669,9 +619,7 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
             overallDownloadBar.setString("Downloading files... Done!");
         });
 
-        SwingUtilities.invokeAndWait(() -> {
-            skipOverrides.setEnabled(false);
-        });
+        SwingUtilities.invokeAndWait(() -> skipOverrides.setEnabled(false));
         if (!skipOverrides.isSelected()) {
             extractOverrides(outputDirFile, null);
             if (pack.getType().getSupportsSides()) {
@@ -763,6 +711,65 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                 GeneralUtilKt.prettyDuration(System.currentTimeMillis() - startTime - durationIgnore) + '!'
         );
         return true;
+    }
+
+    private void runParallel(DownloadThreadRunner runner, int parallelDownloadCount) throws InterruptedException {
+        if (parallelDownloadCount == 0) {
+            LOGGER.info("parallelDownloadCount == 0, skipping {}", runner);
+            return;
+        }
+        final Thread installThread = Thread.currentThread();
+        final Thread[] threads = new Thread[parallelDownloadCount];
+        final Object[] results = new Object[parallelDownloadCount];
+        for (int i = 0; i < parallelDownloadCount; i++) {
+            final int tid = i;
+            threads[i] = new Thread(() -> {
+                try {
+                    runner.run(tid);
+                    results[tid] = Unit.INSTANCE;
+                } catch (InterruptedException e) {
+                    // Ignore
+                } catch (Exception e) {
+                    results[tid] = e;
+                }
+                subDownloadBars[tid].setVisible(false);
+                LockSupport.unpark(installThread);
+            }, "InstallThread-" + i);
+            threads[i].setDaemon(true);
+            threads[i].start();
+        }
+
+        final Set<Thread> failedThreads = new HashSet<>();
+        while (true) {
+            LockSupport.park();
+            int doneCount = 0;
+            int i = -1;
+            for (final Object result : results) {
+                final Thread thread = threads[++i];
+                if (result instanceof Exception e) {
+                    failedThreads.add(thread);
+                    results[i] = Unit.INSTANCE;
+                    LOGGER.error("Error in thread {}", thread.getName(), e);
+                    continue;
+                }
+                if (result == Unit.INSTANCE) {
+                    doneCount++;
+                    continue;
+                }
+                if (result == null) continue;
+                throw new AssertionError("results array has unknown value " + result);
+            }
+            if (doneCount == results.length) break;
+        }
+        for (final Thread thread : threads) {
+            thread.interrupt();
+        }
+        for (final Thread thread : threads) {
+            thread.join();
+        }
+        if (failedThreads.size() == threads.length) {
+            throw new IllegalStateException("All threads errored!");
+        }
     }
 
     private long download(
@@ -883,46 +890,67 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
         });
     }
 
-    private void extractOverrides(File outputDirFile, Side side) throws InterruptedException, IOException {
+    private void extractOverrides(File outputDirFile, Side side) throws InterruptedException {
         String sideName = side == null ? "global" : side.toString().toLowerCase();
         println("\nExtracting " + sideName + " overrides...");
-        final var overrides = pack.getOverrides(side);
-        resetDownloadBars(overrides.size(), 1);
-        int[] i = {0};
-        for (final FileOverride override : overrides) {
-            SwingUtilities.invokeLater(() -> {
-                overallDownloadBar.setValue(i[0]);
-                overallDownloadBar.setString("Extracting " + sideName + " overrides... " + i[0] + "/" + overrides.size());
-                subDownloadBars[0].setValue(0);
-                subDownloadBars[0].setString("Extracting override...");
-            });
-            String baseName = override.getPath();
-            baseName = baseName.substring(baseName.indexOf('/') + 1);
-            File destFile = new File(outputDirFile, baseName);
-            if (override.isDirectory()) {
-                destFile.mkdirs();
-                i[0]++;
-                continue;
+        final List<FileOverride> overrides = pack.getOverrides(side);
+        final int parallelExtractCount = Math.min(overrides.size(), SuperpackSettings.INSTANCE.getParallelDownloadCount());
+
+        resetDownloadBars(overrides.size(), parallelExtractCount);
+
+        final BlockingQueue<FileOverride> extractQueue = new LinkedBlockingQueue<>(overrides);
+        final AtomicInteger extractedCount = new AtomicInteger();
+        final DownloadThreadRunner extractBody = tid -> {
+            final JProgressBar progressBar = tid < subDownloadBars.length ? subDownloadBars[tid] : null;
+            try (ZipFile zf = new ZipFile(pack.getPath())) {
+                while (true) {
+                    final FileOverride override = extractQueue.poll();
+                    if (override == null) break;
+                    final String progressName = parallelExtractCount == 1 ? "override" : override.getPath();
+                    SwingUtilities.invokeLater(() -> {
+                        final int count = extractedCount.get();
+                        overallDownloadBar.setValue(count);
+                        overallDownloadBar.setString("Extracting " + sideName + " overrides... " + count + '/' + overrides.size());
+                        if (progressBar == null) return;
+                        progressBar.setValue(0);
+                        progressBar.setString("Extracting " + progressName + "...");
+                    });
+                    String baseName = override.getPath();
+                    baseName = baseName.substring(baseName.indexOf('/') + 1);
+                    final File destFile = new File(outputDirFile, baseName);
+                    if (override.isDirectory()) {
+                        destFile.mkdirs();
+                        extractedCount.incrementAndGet();
+                        continue;
+                    }
+                    println("Extracting " + override.getPath() + " (" + (extractedCount.incrementAndGet() + 1) + '/' + overrides.size() + ")");
+                    destFile.getParentFile().mkdirs();
+                    final String extractFileSize = GeneralUtilKt.getHumanFileSize(override.getSize());
+                    SwingUtilities.invokeLater(() -> {
+                        if (progressBar == null) return;
+                        progressBar.setMaximum(GeneralUtilKt.toIntClamped(override.getSize()));
+                        progressBar.setValue(0);
+                        progressBar.setString("Extracting " + progressName + "... 0 B / " + extractFileSize);
+                    });
+                    try (InputStream is = new TrackingInputStream(
+                        override.openInputStream(zf),
+                        read -> SwingUtilities.invokeLater(() -> {
+                            if (progressBar == null) return;
+                            progressBar.setValue(GeneralUtilKt.toIntClamped(read));
+                            progressBar.setString(
+                                "Extracting " + progressName +  "... " +
+                                    GeneralUtilKt.getHumanFileSize(read) + " / " + extractFileSize
+                            );
+                        })
+                    )) {
+                        Files.copy(is, destFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                    }
+                }
             }
-            println("Extracting " + override.getPath() + " (" + (i[0] + 1) + "/" + overrides.size() + ")");
-            destFile.getParentFile().mkdirs();
-            final String extractFileSize = GeneralUtilKt.getHumanFileSize(override.getSize());
-            SwingUtilities.invokeLater(() -> {
-                subDownloadBars[0].setMaximum(GeneralUtilKt.toIntClamped(override.getSize()));
-                subDownloadBars[0].setValue(0);
-                subDownloadBars[0].setString("Extracting override... 0 B / " + extractFileSize);
-            });
-            try (InputStream is = new TrackingInputStream(
-                override.openInputStream(),
-                read -> SwingUtilities.invokeLater(() -> {
-                    subDownloadBars[0].setValue(GeneralUtilKt.toIntClamped(read));
-                    subDownloadBars[0].setString("Extracting override... " + GeneralUtilKt.getHumanFileSize(read) + " / " + extractFileSize);
-                })
-            )) {
-                Files.copy(is, destFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-            }
-            i[0]++;
-        }
+        };
+
+        runParallel(extractBody, parallelExtractCount);
+
         println("Extracted " + overrides.size() + " " + sideName + " overrides");
         SwingUtilities.invokeLater(() -> {
             overallDownloadBar.setValue(overallDownloadBar.getMaximum());

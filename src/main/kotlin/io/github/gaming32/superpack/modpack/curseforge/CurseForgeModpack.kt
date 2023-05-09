@@ -1,7 +1,10 @@
 package io.github.gaming32.superpack.modpack.curseforge
 
 import com.google.gson.JsonParser
-import io.github.gaming32.superpack.modpack.*
+import io.github.gaming32.superpack.modpack.FileOverride
+import io.github.gaming32.superpack.modpack.Modpack
+import io.github.gaming32.superpack.modpack.ModpackType
+import io.github.gaming32.superpack.modpack.Side
 import io.github.gaming32.superpack.util.toFile
 import java.util.zip.ZipFile
 
@@ -33,7 +36,7 @@ class CurseForgeModpack(private val zipFile: ZipFile) : Modpack {
         return zipFile.entries()
             .asSequence()
             .filter { it.name.startsWith(root) }
-            .map { ZipEntryFileOverride(zipFile, it) }
+            .map(::FileOverride)
             .toList()
     }
 

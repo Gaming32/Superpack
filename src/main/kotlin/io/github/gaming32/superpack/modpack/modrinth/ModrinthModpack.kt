@@ -1,14 +1,14 @@
 package io.github.gaming32.superpack.modpack.modrinth
 
 import io.github.gaming32.mrpacklib.Mrpack
+import io.github.gaming32.superpack.modpack.FileOverride
 import io.github.gaming32.superpack.modpack.Modpack
 import io.github.gaming32.superpack.modpack.ModpackType
 import io.github.gaming32.superpack.modpack.Side
-import io.github.gaming32.superpack.modpack.ZipEntryFileOverride
 import io.github.gaming32.superpack.util.toFile
 import java.util.zip.ZipFile
 
-class ModrinthModpack(private val zipFile: ZipFile) : Modpack {
+class ModrinthModpack(zipFile: ZipFile) : Modpack {
     private val mrpack = Mrpack(zipFile)
 
     override val type = ModpackType.MODRINTH
@@ -23,8 +23,7 @@ class ModrinthModpack(private val zipFile: ZipFile) : Modpack {
 
     override val allFiles = mrpack.allFiles.map(::ModrinthModpackFile)
 
-    override fun getOverrides(side: Side?) =
-        mrpack.getOverrides(side?.mrpack).map { ZipEntryFileOverride(zipFile, it) }
+    override fun getOverrides(side: Side?) = mrpack.getOverrides(side?.mrpack).map(::FileOverride)
 
     override fun close() = mrpack.close()
 
