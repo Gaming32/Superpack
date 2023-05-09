@@ -18,7 +18,6 @@ import javax.swing.GroupLayout.Alignment;
 import javax.swing.event.HyperlinkEvent;
 import java.awt.*;
 import java.io.*;
-import java.lang.reflect.InvocationTargetException;
 import java.net.URI;
 import java.net.URL;
 import java.nio.file.Files;
@@ -53,12 +52,14 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
     private JCheckBox skipOverrides;
     private JTextPane installOutput;
 
-    private JPanel downloadBars;
-    private JProgressBar overallDownloadBar;
-    private final JProgressBar[] subDownloadBars = new JProgressBar[15];
+    private JPanel progressBars;
+    private JProgressBar overallProgressBar;
+    private final JProgressBar[] subProgressBars = new JProgressBar[15];
 
     private boolean hashedProject;
     private ModrinthId modrinthProjectId;
+
+    private Thread installThread;
 
     public InstallPackTab(SuperpackMainFrame parent, Modpack pack, String selectedFilename, String friendlyName) throws IOException {
         super();
@@ -140,9 +141,20 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
 
         installButton = new JButton("Install!");
         installButton.addActionListener(ev -> {
+            if (installThread != null && installThread.isAlive()) {
+                try {
+                    println("Cancelling install", true);
+                } catch (InterruptedException e) {
+                    LOGGER.error("Interrupted unexpectedly", e);
+                }
+                overallProgressBar.setString("Cancelling...");
+                installThread.interrupt();
+                return;
+            }
             setConfigEnabled(false);
+            installButton.setText("Cancel install");
             installOutput.setText("");
-            final Thread installThread = new Thread(this::doInstall, "InstallThread");
+            installThread = new Thread(this::doInstall, "InstallThread");
             installThread.setDaemon(true);
             installThread.start();
         });
@@ -163,22 +175,22 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
             ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED
         );
 
-        overallDownloadBar = new JProgressBar();
-        overallDownloadBar.setStringPainted(true);
+        overallProgressBar = new JProgressBar();
+        overallProgressBar.setStringPainted(true);
 
-        for (int i = 0; i < subDownloadBars.length; i++) {
-            subDownloadBars[i] = new JProgressBar();
-            subDownloadBars[i].setStringPainted(true);
-            subDownloadBars[i].setVisible(false);
+        for (int i = 0; i < subProgressBars.length; i++) {
+            subProgressBars[i] = new JProgressBar();
+            subProgressBars[i].setStringPainted(true);
+            subProgressBars[i].setVisible(false);
         }
 
-        downloadBars = new JPanel();
-        downloadBars.setLayout(new BoxLayout(downloadBars, BoxLayout.Y_AXIS));
-        downloadBars.add(overallDownloadBar);
-        for (final JProgressBar bar : subDownloadBars) {
-            downloadBars.add(bar);
+        progressBars = new JPanel();
+        progressBars.setLayout(new BoxLayout(progressBars, BoxLayout.Y_AXIS));
+        progressBars.add(overallProgressBar);
+        for (final JProgressBar bar : subProgressBars) {
+            progressBars.add(bar);
         }
-        downloadBars.setVisible(false);
+        progressBars.setVisible(false);
 
         GroupLayout layout = new GroupLayout(this);
         setLayout(layout);
@@ -239,7 +251,7 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                         )
                 ))
                 .addComponent(outputScrollPane)
-                .addComponent(downloadBars)
+                .addComponent(progressBars)
         ));
         layout.setVerticalGroup(GeneralUtilKt.build(layout.createSequentialGroup(),
             g -> g.addGroup(layout.createParallelGroup(Alignment.CENTER)
@@ -305,7 +317,7 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                         )
                 ))
                 .addComponent(outputScrollPane)
-                .addComponent(downloadBars)
+                .addComponent(progressBars)
         ));
     }
 
@@ -417,26 +429,30 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
         for (JCheckBox optionalCheckBox : optionalCheckboxes.values()) {
             optionalCheckBox.setEnabled(enabled);
         }
-        installButton.setEnabled(enabled);
         if (enabled) {
+            installButton.setEnabled(true);
+            installButton.setText("Install!");
             skipOverrides.setEnabled(true);
+        }
+        if (pack.getType() == ModpackType.CURSEFORGE) {
+            modrinthButton.setEnabled(enabled);
         }
     }
 
-    private void println(String s) throws InterruptedException {
+    private void println(String s, boolean important) throws InterruptedException {
         LOGGER.info(s);
         if (!isVisible()) {
             throw new InterruptedException();
         }
-        try {
-            SwingUtilities.invokeAndWait(() -> {
+        if (important) {
+            SwingUtilities.invokeLater(() -> {
                 installOutput.setEditable(true);
                 installOutput.setCaretPosition(installOutput.getDocument().getLength());
                 installOutput.replaceSelection(s + System.lineSeparator());
                 installOutput.setEditable(false);
             });
-        } catch (InvocationTargetException | InterruptedException e) {
-            GeneralUtilKt.showErrorMessage(this, e);
+        } else if (Thread.interrupted()) {
+            throw new InterruptedException();
         }
     }
 
@@ -446,10 +462,18 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
             showSuccessMessage = doInstall0();
         } catch (InterruptedException e) {
             showSuccessMessage = false;
+            if (isVisible()) {
+                try {
+                    println("\nInstall cancelled.", true);
+                } catch (InterruptedException e1) {
+                    LOGGER.error("Interrupted unexpectedly", e1);
+                }
+            }
         } catch (Exception e) {
             showSuccessMessage = false;
             GeneralUtilKt.showErrorMessage(this, e);
         }
+        progressBars.setVisible(false);
         if (isVisible()) {
             final boolean showSuccessMessage0 = showSuccessMessage;
             SwingUtilities.invokeLater(() -> {
@@ -468,7 +492,7 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
 
     private boolean doInstall0() throws Exception {
         if (outputDir.getText().isEmpty()) {
-            println("Please specify a destination directory");
+            println("Please specify a destination directory", true);
             return false;
         }
         final File outputDirFile = new File(outputDir.getText());
@@ -491,10 +515,10 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
         final long startTime = System.currentTimeMillis();
 
         final Side env = (Side)side.getSelectedItem();
-        println("Creating destination directory...");
+        println("Creating destination directory...", true);
         outputDirFile.mkdirs();
 
-        println("\nDownloading files...");
+        println("\nDownloading files...", true);
         final String secondaryHash = pack.getType().getSecondaryHash().getAlgorithm();
         final AtomicLong totalDownloadSize = new AtomicLong();
         final AtomicInteger installedCount = new AtomicInteger();
@@ -508,7 +532,7 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
         final BlockingQueue<ModpackFile> downloadQueue = new LinkedBlockingQueue<>(filesToDownload);
 
         final DownloadThreadRunner downloadBody = tid -> {
-            final JProgressBar progressBar = tid < subDownloadBars.length ? subDownloadBars[tid] : null;
+            final JProgressBar progressBar = tid < subProgressBars.length ? subProgressBars[tid] : null;
             final MultiMessageDigest digest = new MultiMessageDigest(
                 GeneralUtilKt.getSha1(),
                 MessageDigest.getInstance(secondaryHash)
@@ -519,8 +543,8 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                 final String progressName = parallelDownloadCount == 1 ? "file" : file.getPath();
                 SwingUtilities.invokeLater(() -> {
                     final int count = installedCount.get();
-                    overallDownloadBar.setValue(count);
-                    overallDownloadBar.setString("Downloading files... " + count + '/' + filesToDownload.size());
+                    overallProgressBar.setValue(count);
+                    overallProgressBar.setString("Downloading files... " + count + '/' + filesToDownload.size());
                     if (progressBar == null) return;
                     progressBar.setValue(0);
                     progressBar.setString("Downloading " + progressName + "...");
@@ -528,7 +552,7 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                 if (file.getCompatibility(env) == Compatibility.OPTIONAL) {
                     final JCheckBox optionalCheckBox = optionalCheckboxes.get(file.getPath());
                     if (!optionalCheckBox.isSelected()) {
-                        println("Skipped optional file " + file.getPath());
+                        println("Skipped optional file " + file.getPath(), true);
                     }
                 }
                 final File destPath = new File(outputDirFile, file.getPath());
@@ -540,7 +564,7 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                     );
                 }
                 destPath.getParentFile().mkdirs();
-                println("Installing " + file.getPath() + " (" + installedCount.incrementAndGet() + '/' + filesToDownload.size() + ')');
+                println("Installing " + file.getPath() + " (" + installedCount.incrementAndGet() + '/' + filesToDownload.size() + ')', false);
                 final File cacheFile;
                 if (file.getHashes().containsKey("sha1")) {
                     if (Files.exists(destPath.toPath()) && Files.size(destPath.toPath()) == file.getSize()) {
@@ -553,9 +577,9 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                             file.getHashes().get("sha1")
                         )) {
                             if (parallelDownloadCount == 1) {
-                                println("   Skipping already complete file " + file.getPath());
+                                println("   Skipping already complete file " + file.getPath(), false);
                             } else {
-                                println("Skipping already complete file " + file.getPath());
+                                println("Skipping already complete file " + file.getPath(), false);
                             }
                             continue;
                         }
@@ -563,9 +587,9 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                     cacheFile = SuperpackKt.getCacheFilePath(file.getHashes().get("sha1"));
                     if (cacheFile.isFile() && cacheFile.length() == file.getSize()) {
                         if (parallelDownloadCount == 1) {
-                            println("   File found in cache at " + cacheFile);
+                            println("   File found in cache at " + cacheFile, false);
                         } else {
-                            println("File " + file.getPath() + " found in cache at " + cacheFile);
+                            println("File " + file.getPath() + " found in cache at " + cacheFile, false);
                         }
                         Files.copy(cacheFile.toPath(), destPath.toPath(), StandardCopyOption.REPLACE_EXISTING);
                         continue;
@@ -599,9 +623,9 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                 } else {
                     failedToDownload.add(file);
                     if (parallelDownloadCount == 1) {
-                        println("   Failed to download file.");
+                        println("   Failed to download file.", false);
                     } else {
-                        println("Failed to download " + file.getPath());
+                        println("Failed to download " + file.getPath(), false);
                     }
                     try {
                         Files.delete(destPath.toPath());
@@ -612,16 +636,17 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
             }
         };
 
-        runParallel(downloadBody, parallelDownloadCount);
+        runParallel(downloadBody, parallelDownloadCount, downloadQueue::clear);
 
         println(
             "Downloaded a total of " +
             GeneralUtilKt.getHumanFileSizeExtended(totalDownloadSize.get()) +
-            " across " + downloadedCount.get() + " files"
+            " across " + downloadedCount.get() + " files",
+            true
         );
         SwingUtilities.invokeLater(() -> {
-            overallDownloadBar.setValue(overallDownloadBar.getMaximum());
-            overallDownloadBar.setString("Downloading files... Done!");
+            overallProgressBar.setValue(overallProgressBar.getMaximum());
+            overallProgressBar.setString("Downloading files... Done!");
         });
 
         SwingUtilities.invokeAndWait(() -> skipOverrides.setEnabled(false));
@@ -636,13 +661,13 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
 
         if (!failedToDownload.isEmpty()) {
             final List<CurseForgeModpackFile> becauseOfCf = new ArrayList<>();
-            println("\n" + failedToDownload.size() + " file(s) failed to download:");
+            println("\n" + failedToDownload.size() + " file(s) failed to download:", true);
             for (final ModpackFile file : failedToDownload) {
                 final boolean wasCf = pack.getType() == ModpackType.CURSEFORGE && file.getDownloads().isEmpty();
                 if (wasCf) {
                     becauseOfCf.add((CurseForgeModpackFile)file);
                 }
-                println("  + " + file.getPath() + (wasCf ? " (blacklisted by author)" : ""));
+                println("  + " + file.getPath() + (wasCf ? " (blacklisted by author)" : ""), true);
             }
             if (!becauseOfCf.isEmpty()) {
                 final Map<Integer, String> listElements = new LinkedHashMap<>();
@@ -707,14 +732,14 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                             1,
                             "",
                             downloadDest.toURI().toURL(),
-                            subDownloadBars[0],
+                            subProgressBars[0],
                             digest,
                             file,
                             new File(outputDirFile, file.getPath()), // Already validated
                             secondaryHash
                         ) >= 0) {
                             if (!downloadDest.delete()) {
-                                println("Failed to delete " + downloadDest);
+                                println("Failed to delete " + downloadDest, true);
                             }
                             listElements.remove(file.getFileId());
                             pane.setText(messageHeader + "<ul>" + String.join("", listElements.values()) + "</ul></html>");
@@ -729,20 +754,21 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
         }
         println(
             "\nInstall finished in " +
-                GeneralUtilKt.prettyDuration(System.currentTimeMillis() - startTime - durationIgnore) + '!'
+                GeneralUtilKt.prettyDuration(System.currentTimeMillis() - startTime - durationIgnore) + '!',
+            true
         );
         return true;
     }
 
-    private void runParallel(DownloadThreadRunner runner, int parallelDownloadCount) throws InterruptedException {
-        if (parallelDownloadCount == 0) {
-            LOGGER.info("parallelDownloadCount == 0, skipping {}", runner);
+    private void runParallel(DownloadThreadRunner runner, int parallelCount, Runnable interruptedAction) throws InterruptedException {
+        if (parallelCount == 0) {
+            LOGGER.info("parallelCount == 0, skipping {}", runner);
             return;
         }
         final Thread installThread = Thread.currentThread();
-        final Thread[] threads = new Thread[parallelDownloadCount];
-        final Object[] results = new Object[parallelDownloadCount];
-        for (int i = 0; i < parallelDownloadCount; i++) {
+        final Thread[] threads = new Thread[parallelCount];
+        final Object[] results = new Object[parallelCount];
+        for (int i = 0; i < parallelCount; i++) {
             final int tid = i;
             threads[i] = new Thread(() -> {
                 try {
@@ -753,16 +779,22 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                 } catch (Exception e) {
                     results[tid] = e;
                 }
-                subDownloadBars[tid].setVisible(false);
+                subProgressBars[tid].setVisible(false);
                 LockSupport.unpark(installThread);
             }, "InstallThread-" + i);
             threads[i].setDaemon(true);
             threads[i].start();
         }
 
+        boolean interrupted = false;
         final Set<Thread> failedThreads = new HashSet<>();
         while (true) {
             LockSupport.park();
+            if (Thread.interrupted()) {
+                interrupted = true;
+                interruptedAction.run();
+                break;
+            }
             int doneCount = 0;
             int i = -1;
             for (final Object result : results) {
@@ -791,6 +823,9 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
         if (failedThreads.size() == threads.length) {
             throw new IllegalStateException("All threads errored!");
         }
+        if (interrupted) {
+            throw new InterruptedException();
+        }
     }
 
     private long download(
@@ -807,7 +842,7 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
         final String downloadFileSize = GeneralUtilKt.getHumanFileSize(file.getSize());
 
         if (parallelDownloadCount == 1) {
-            println(indent + "Downloading " + downloadUrl);
+            println(indent + "Downloading " + downloadUrl, false);
         }
         SwingUtilities.invokeLater(() -> {
             if (progressBar == null) return;
@@ -830,25 +865,27 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
             downloadSize = Files.copy(is, destPath.toPath(), StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
             if (parallelDownloadCount == 1) {
-                println(indent + "   Failed to download " + downloadUrl + ": " + e);
+                println(indent + "   Failed to download " + downloadUrl + ": " + e, false);
             } else {
-                println("Failed to download " + downloadUrl + ": " + e);
+                println("Failed to download " + downloadUrl + ": " + e, false);
             }
             return -1L;
         }
         if (parallelDownloadCount == 1) {
-            println(indent + "   Downloaded " + GeneralUtilKt.getHumanFileSizeExtended(downloadSize));
+            println(indent + "   Downloaded " + GeneralUtilKt.getHumanFileSizeExtended(downloadSize), false);
         }
         if (downloadSize != file.getSize()) {
             if (parallelDownloadCount == 1) {
                 println(
                     indent + "      ERROR: File size doesn't match! Expected " +
-                        GeneralUtilKt.getHumanFileSizeExtended(file.getSize())
+                        GeneralUtilKt.getHumanFileSizeExtended(file.getSize()),
+                    false
                 );
             } else {
                 println(
                     "ERROR: File size for " + file.getPath() + " doesn't match! Expected " +
-                        GeneralUtilKt.getHumanFileSizeExtended(file.getSize())
+                        GeneralUtilKt.getHumanFileSizeExtended(file.getSize()),
+                    false
                 );
             }
             return -1L;
@@ -860,13 +897,13 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
             hash1 = digest.getDigests()[0].digest();
             hash2 = file.getHashes().get("sha1");
             if (parallelDownloadCount == 1) {
-                println(indent + "   SHA-1: " + GeneralUtilKt.toHexString(hash1));
+                println(indent + "   SHA-1: " + GeneralUtilKt.toHexString(hash1), false);
             }
             if (!Arrays.equals(hash1, hash2)) {
                 if (parallelDownloadCount == 1) {
-                    println(indent + "      ERROR: SHA-1 doesn't match! Expected " + GeneralUtilKt.toHexString(hash2));
+                    println(indent + "      ERROR: SHA-1 doesn't match! Expected " + GeneralUtilKt.toHexString(hash2), false);
                 } else {
-                    println("ERROR: SHA-1 for " + file.getPath() + " doesn't match! Expected " + GeneralUtilKt.toHexString(hash2));
+                    println("ERROR: SHA-1 for " + file.getPath() + " doesn't match! Expected " + GeneralUtilKt.toHexString(hash2), false);
                 }
                 return -1L;
             }
@@ -877,15 +914,16 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
             hash1 = digest.getDigests()[1].digest();
             hash2 = file.getHashes().get(pack.getType().getSecondaryHash().getApiId());
             if (parallelDownloadCount == 1) {
-                println(indent + "   " + secondaryHash + ": " + GeneralUtilKt.toHexString(hash1));
+                println(indent + "   " + secondaryHash + ": " + GeneralUtilKt.toHexString(hash1), false);
             }
             if (!Arrays.equals(hash1, hash2)) {
                 if (parallelDownloadCount == 1) {
-                    println(indent + "      ERROR: " + secondaryHash + " doesn't match! Expected " + GeneralUtilKt.toHexString(hash2));
+                    println(indent + "      ERROR: " + secondaryHash + " doesn't match! Expected " + GeneralUtilKt.toHexString(hash2), false);
                 } else {
                     println(
                         "ERROR: " + secondaryHash + " for " + file.getPath() + " doesn't match! Expected " +
-                            GeneralUtilKt.toHexString(hash2)
+                            GeneralUtilKt.toHexString(hash2),
+                        false
                     );
                 }
                 return -1L;
@@ -897,23 +935,23 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
 
     private void resetDownloadBars(int count, int subBarCount) {
         SwingUtilities.invokeLater(() -> {
-            overallDownloadBar.setMaximum(count);
-            overallDownloadBar.setValue(0);
-            overallDownloadBar.setString("");
+            overallProgressBar.setMaximum(count);
+            overallProgressBar.setValue(0);
+            overallProgressBar.setString("");
             int i = 0;
-            for (final JProgressBar bar : subDownloadBars) {
+            for (final JProgressBar bar : subProgressBars) {
                 bar.setValue(0);
                 bar.setString("");
                 bar.setVisible(i < subBarCount);
                 i++;
             }
-            downloadBars.setVisible(true);
+            progressBars.setVisible(true);
         });
     }
 
     private void extractOverrides(File outputDirFile, Side side) throws InterruptedException {
         String sideName = side == null ? "global" : side.toString().toLowerCase();
-        println("\nExtracting " + sideName + " overrides...");
+        println("\nExtracting " + sideName + " overrides...", true);
         final List<FileOverride> overrides = pack.getOverrides(side);
         final int parallelExtractCount = Math.min(overrides.size(), SuperpackSettings.INSTANCE.getParallelDownloadCount());
 
@@ -922,7 +960,7 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
         final BlockingQueue<FileOverride> extractQueue = new LinkedBlockingQueue<>(overrides);
         final AtomicInteger extractedCount = new AtomicInteger();
         final DownloadThreadRunner extractBody = tid -> {
-            final JProgressBar progressBar = tid < subDownloadBars.length ? subDownloadBars[tid] : null;
+            final JProgressBar progressBar = tid < subProgressBars.length ? subProgressBars[tid] : null;
             try (ZipFile zf = new ZipFile(pack.getPath())) {
                 while (true) {
                     final FileOverride override = extractQueue.poll();
@@ -930,8 +968,8 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                     final String progressName = parallelExtractCount == 1 ? "override" : override.getPath();
                     SwingUtilities.invokeLater(() -> {
                         final int count = extractedCount.get();
-                        overallDownloadBar.setValue(count);
-                        overallDownloadBar.setString("Extracting " + sideName + " overrides... " + count + '/' + overrides.size());
+                        overallProgressBar.setValue(count);
+                        overallProgressBar.setString("Extracting " + sideName + " overrides... " + count + '/' + overrides.size());
                         if (progressBar == null) return;
                         progressBar.setValue(0);
                         progressBar.setString("Extracting " + progressName + "...");
@@ -944,7 +982,7 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                         extractedCount.incrementAndGet();
                         continue;
                     }
-                    println("Extracting " + override.getPath() + " (" + (extractedCount.incrementAndGet() + 1) + '/' + overrides.size() + ")");
+                    println("Extracting " + override.getPath() + " (" + (extractedCount.incrementAndGet() + 1) + '/' + overrides.size() + ")", false);
                     destFile.getParentFile().mkdirs();
                     final String extractFileSize = GeneralUtilKt.getHumanFileSize(override.getSize());
                     SwingUtilities.invokeLater(() -> {
@@ -970,12 +1008,12 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
             }
         };
 
-        runParallel(extractBody, parallelExtractCount);
+        runParallel(extractBody, parallelExtractCount, extractQueue::clear);
 
-        println("Extracted " + overrides.size() + " " + sideName + " overrides");
+        println("Extracted " + overrides.size() + " " + sideName + " overrides", true);
         SwingUtilities.invokeLater(() -> {
-            overallDownloadBar.setValue(overallDownloadBar.getMaximum());
-            overallDownloadBar.setString("Extracting " + sideName + " overrides... Done!");
+            overallProgressBar.setValue(overallProgressBar.getMaximum());
+            overallProgressBar.setString("Extracting " + sideName + " overrides... Done!");
         });
     }
 
