@@ -153,10 +153,6 @@ fun ByteArray.toHexString(): String {
 @Suppress("NOTHING_TO_INLINE")
 inline fun String.parseHexString(): ByteArray = GsonHelper.fromHexString(this)
 
-fun <T : Any> Iterable<T>.findFirst() = iterator().findFirst()
-
-fun <T : Any> Iterator<T>.findFirst() = Optional.ofNullable(if (hasNext()) next() else null)
-
 fun AbstractButton.callAction() {
     val model = model
     val armed = model.isArmed
@@ -194,10 +190,8 @@ fun ByteArray.sha1(): ByteArray = getSha1().digest(this)
 @Throws(IOException::class)
 fun InputStream.sha1(): ByteArray {
     val digest = getSha1()
-    DigestInputStream(this, digest).use { is2 ->
-        readAndDiscard(is2)
-        return digest.digest()
-    }
+    DigestInputStream(this, digest).use(::readAndDiscard)
+    return digest.digest()
 }
 
 fun getIconCacheKey(iconUrl: String): String {

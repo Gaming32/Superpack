@@ -19,6 +19,7 @@ import javax.swing.event.HyperlinkEvent;
 import java.awt.*;
 import java.io.*;
 import java.lang.reflect.InvocationTargetException;
+import java.net.URI;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
@@ -47,7 +48,7 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
     private JComboBox<Side> side;
     private JPanel optionalCheckboxPanel;
     private Map<String, JCheckBox> optionalCheckboxes;
-    private JButton viewOnModrinthButton;
+    private JButton modrinthButton;
     private JButton installButton;
     private JCheckBox skipOverrides;
     private JTextPane installOutput;
@@ -122,15 +123,19 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
         optionalCheckboxes = new HashMap<>();
         populateOptionalCheckboxes();
 
+        modrinthButton = new JButton(
+            pack.getType() == ModpackType.MODRINTH ? "View on Modrinth" : "Convert to Modrinth Pack"
+        );
         hashProjectAndLookup(() -> {
-            if (viewOnModrinthButton != null && modrinthProjectId != null) {
-                viewOnModrinthButton.setEnabled(true);
+            if (modrinthProjectId != null) {
+                modrinthButton.setEnabled(true);
             }
         });
         if (pack.getType() == ModpackType.MODRINTH) {
-            viewOnModrinthButton = new JButton("View on Modrinth");
-            viewOnModrinthButton.setEnabled(false);
-            viewOnModrinthButton.addActionListener(ev -> hashProjectAndLookup(this::openOnModrinth));
+            modrinthButton.setEnabled(false);
+            modrinthButton.addActionListener(ev -> hashProjectAndLookup(this::openOnModrinth));
+        } else {
+            // TODO: Implement conversion
         }
 
         installButton = new JButton("Install!");
@@ -216,11 +221,11 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                 )
                 .addGroup(GeneralUtilKt.build(layout.createSequentialGroup(),
                     g1 -> {
-                        if (viewOnModrinthButton == null) {
+                        if (modrinthButton == null) {
                             return g1;
                         }
                         return g1.addComponent(
-                            viewOnModrinthButton,
+                            modrinthButton,
                             GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE
                         );
                     },
@@ -282,11 +287,11 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                 )
                 .addGroup(GeneralUtilKt.build(layout.createParallelGroup(Alignment.CENTER),
                     g1 -> {
-                        if (viewOnModrinthButton == null) {
+                        if (modrinthButton == null) {
                             return g1;
                         }
                         return g1.addComponent(
-                            viewOnModrinthButton,
+                            modrinthButton,
                             GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE
                         );
                     },
@@ -329,7 +334,7 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
     }
 
     private void hashProjectAndLookup(Runnable completionAction) {
-        if (modrinthProjectId != null || (hashedProject && viewOnModrinthButton == null)) {
+        if (modrinthProjectId != null || (hashedProject && modrinthButton == null)) {
             completionAction.run();
             return;
         }
@@ -650,18 +655,34 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                 final File downloadsDir = GeneralUtilKt.getDownloadsFolder();
                 final String messageHeader = "<html>Please download the following files manually to " +
                     downloadsDir +
-                    ".<ul>";
-                final String messageFooter = "</ul></html>";
+                    '.';
                 final JEditorPane pane = new JEditorPane(
                     "text/html",
-                    messageHeader + String.join("", listElements.values()) + messageFooter
+                    messageHeader + " (<a href=\"0\">Try automatically</a>)<ul>" + String.join("", listElements.values()) + "</ul></html>"
                 );
                 pane.addHyperlinkListener(e -> {
                     if (e.getEventType() == HyperlinkEvent.EventType.ACTIVATED) {
+                        if (e.getURL() == null) {
+                            switch (e.getDescription()) {
+                                case "0" -> {
+                                    for (final CurseForgeModpackFile file : becauseOfCf) {
+                                        if (!listElements.containsKey(file.getFileId())) continue;
+                                        final String downloadUrl = file.getBrowserDownloadUrl();
+                                        try {
+                                            Desktop.getDesktop().browse(new URI(downloadUrl));
+                                        } catch (Exception e1) {
+                                            GeneralUtilKt.showErrorMessage(this, "Failed to open " + downloadUrl, e1);
+                                        }
+                                    }
+                                }
+                                default -> LOGGER.warn("Unknown custom href {}", e.getDescription());
+                            }
+                            return;
+                        }
                         try {
                             Desktop.getDesktop().browse(e.getURL().toURI());
                         } catch (Exception e1) {
-                            LOGGER.error("Failed to open link", e1);
+                            GeneralUtilKt.showErrorMessage(this, e1);
                         }
                     }
                 });
@@ -696,14 +717,14 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                                 println("Failed to delete " + downloadDest);
                             }
                             listElements.remove(file.getFileId());
-                            pane.setText(messageHeader + String.join("", listElements.values()) + messageFooter);
+                            pane.setText(messageHeader + "<ul>" + String.join("", listElements.values()) + "</ul></html>");
                         }
                     }
                     //noinspection BusyWait
                     Thread.sleep(1000);
                     durationIgnore += 1000;
                 }
-                pane.setText(messageHeader + "<li>All done!</li>" + messageFooter);
+                pane.setText(messageHeader + "<ul><li>All done!</li></ul></html>");
             }
         }
         println(
