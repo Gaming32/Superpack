@@ -1,5 +1,7 @@
 package io.github.gaming32.superpack.util;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -45,10 +47,10 @@ public class TrackingInputStream extends FilterInputStream {
             }
         }
         return result;
-    };
+    }
 
     @Override
-    public int read(byte[] b, int off, int len) throws IOException {
+    public int read(byte @NotNull [] b, int off, int len) throws IOException {
         len = in.read(b, off, len);
         if (len > 0) {
             read += len;
@@ -59,7 +61,7 @@ public class TrackingInputStream extends FilterInputStream {
             }
         }
         return len;
-    };
+    }
 
     @Override
     public long skip(long n) throws IOException {
@@ -73,7 +75,7 @@ public class TrackingInputStream extends FilterInputStream {
             }
         }
         return n;
-    };
+    }
 
     @Override
     public synchronized void mark(int readlimit) {

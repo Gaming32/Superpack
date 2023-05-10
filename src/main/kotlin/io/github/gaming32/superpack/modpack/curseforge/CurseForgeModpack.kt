@@ -41,7 +41,7 @@ class CurseForgeModpack(override val zipFile: ZipFile) : Modpack {
         if (side != null) {
             return listOf()
         }
-        val root = "${manifest["overrides"].asJsonPrimitive.asString}/"
+        val root = "${manifest["overrides"].asString}/"
         return zipFile.entries()
             .asSequence()
             .filter { it.name.startsWith(root) }

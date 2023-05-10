@@ -1275,12 +1275,18 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                 }
                 Files.createDirectories(destPath.getParent());
                 final MessageDigest sha1md = GeneralUtilKt.getSha1();
+                final String fileSizeStr = GeneralUtilKt.getHumanFileSize(override.getSize());
+                SwingUtilities.invokeLater(() -> {
+                    progressBar.setMaximum(GeneralUtilKt.toIntClamped(override.getSize()));
+                    progressBar.setValue(0);
+                    progressBar.setString("Copying " + override.getPath() + "... 0 B / " + fileSizeStr);
+                });
                 try (InputStream is = new TrackingInputStream(
                     new DigestInputStream(override.openInputStream(pack.getZipFile()), sha1md),
                     read -> SwingUtilities.invokeLater(() -> {
                         progressBar.setValue(GeneralUtilKt.toIntClamped(read));
                         progressBar.setString(
-                            "Copying " + override.getPath() + "... " + GeneralUtilKt.getHumanFileSize(read) + " / " + override.getSize()
+                            "Copying " + override.getPath() + "... " + GeneralUtilKt.getHumanFileSize(read) + " / " + fileSizeStr
                         );
                     })
                 )) {
@@ -1289,11 +1295,10 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                 if (!MR_LOOKUP_EXTENSIONS.contains(StringsKt.substringAfterLast(override.getPath(), '.', ""))) {
                     continue;
                 }
-                final byte[] sha1 = sha1md.digest();
                 final Version versionData;
                 try (Reader reader = new InputStreamReader(SimpleHttp.stream(SimpleHttp.createUrl(
                     SuperpackKt.MODRINTH_API_ROOT,
-                    "/version_file/" + GeneralUtilKt.toHexString(sha1),
+                    "/version_file/" + GeneralUtilKt.toHexString(sha1md.digest()),
                     Map.of()
                 )))) {
                     versionData = LabrinthGson.GSON.fromJson(reader, Version.class);
@@ -1307,7 +1312,7 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                 writer.name("path").value(override.getPath().substring("overrides/".length()));
                 writer.name("hashes").beginObject();
                 {
-                    writer.name("sha1").value(GeneralUtilKt.toHexString(sha1));
+                    writer.name("sha1").value(GeneralUtilKt.toHexString(versionFile.getHashes().getSha1()));
                     writer.name("sha512").value(GeneralUtilKt.toHexString(versionFile.getHashes().getSha512()));
                 }
                 writer.endObject();
