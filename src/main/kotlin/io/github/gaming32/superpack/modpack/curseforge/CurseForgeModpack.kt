@@ -7,7 +7,7 @@ import io.github.gaming32.superpack.util.splitOnce
 import io.github.gaming32.superpack.util.toFile
 import java.util.zip.ZipFile
 
-class CurseForgeModpack(private val zipFile: ZipFile) : Modpack {
+class CurseForgeModpack(override val zipFile: ZipFile) : Modpack {
     val manifest: JsonObject by lazy {
         zipFile.getInputStream(zipFile.getEntry("manifest.json"))
             .reader()

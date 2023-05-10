@@ -15,6 +15,8 @@ interface Modpack : AutoCloseable {
 
     val path: File
 
+    val zipFile: ZipFile
+
     val versions: ModpackVersions
 
     @get:Throws(IOException::class)

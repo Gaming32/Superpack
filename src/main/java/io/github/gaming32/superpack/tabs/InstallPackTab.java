@@ -12,6 +12,7 @@ import io.github.gaming32.superpack.modpack.curseforge.CurseForgeModpack;
 import io.github.gaming32.superpack.modpack.curseforge.CurseForgeModpackFile;
 import io.github.gaming32.superpack.util.*;
 import kotlin.Unit;
+import kotlin.text.StringsKt;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 
@@ -38,6 +39,11 @@ import java.util.zip.ZipFile;
 
 public final class InstallPackTab extends JPanel implements HasLogger, AutoCloseable {
     private static final Logger LOGGER = GeneralUtilKt.getLogger();
+    private static final Set<String> MR_LOOKUP_EXTENSIONS = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+
+    static {
+        MR_LOOKUP_EXTENSIONS.addAll(Set.of("jar", "litemod", "zip", "mrpack"));
+    }
 
     private final SuperpackMainFrame parent;
     private final Modpack pack;
@@ -155,7 +161,7 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                 installButton.setEnabled(false);
                 modrinthButton.setText("Cancel conversion");
                 installOutput.setText("");
-                installThread = new Thread(() -> doConvert(destFile), "ConvertThread");
+                installThread = new Thread(() -> doConvert(destFile), "ConversionThread");
                 installThread.setDaemon(true);
                 installThread.start();
             });
@@ -1059,7 +1065,7 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
             succeeded = false;
             if (isVisible()) {
                 try {
-                    println("\nConvert cancelled.", true);
+                    println("\nConversion cancelled.", true);
                 } catch (InterruptedException e1) {
                     LOGGER.error("Interrupted unexpectedly", e1);
                 }
@@ -1096,10 +1102,10 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
             MessageDigest.getInstance("SHA-512")
         );
 
-        println("Converting pack manifest", true);
+        println("Converting pack", true);
 
         final List<ModpackFile> overridesFiles = new ArrayList<>();
-        final List<ModpackFile> thirdPartDisabled = new ArrayList<>();
+        final List<ModpackFile> thirdPartyDisabled = new ArrayList<>();
 
         try (JsonWriter writer = new JsonWriter(Files.newBufferedWriter(fs.getPath("modrinth.index.json")))) {
             writer.setIndent("  ");
@@ -1111,10 +1117,12 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
             // CurseForge packs don't have a summary, but they do have an author (and mrpacks don't)
             writer.name("summary").value(pack.getName() + " by " + ((CurseForgeModpack)pack).getManifest().get("author").getAsString());
 
+            writer.name("files").beginArray();
+
+            println("\nConverting referenced files", true);
             final int fileCount = pack.getAllFiles().size();
             resetDownloadBars(fileCount, 0);
             int fileI = -1;
-            writer.name("files").beginArray();
             for (final ModpackFile file : pack.getAllFiles()) {
                 if (Thread.interrupted()) {
                     throw new InterruptedException();
@@ -1131,7 +1139,7 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                 if (!hashes.containsKey("sha1")) {
                     final List<URL> downloadUrls = file.getDownloads();
                     if (downloadUrls.isEmpty()) {
-                        thirdPartDisabled.add(file);
+                        thirdPartyDisabled.add(file);
                         println("WARNING: Could not include mod " + file.getPath() + " because its author disabled 3rd party downloads.", true);
                         continue;
                     }
@@ -1217,7 +1225,7 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                     if (!cacheFile.isFile() || cacheFile.length() != file.getSize()) {
                         final List<URL> downloadUrls = file.getDownloads();
                         if (downloadUrls.isEmpty()) {
-                            thirdPartDisabled.add(file);
+                            thirdPartyDisabled.add(file);
                             println("WARNING: Could not include mod " + file.getPath() + " because its author disabled 3rd party downloads.", true);
                             continue;
                         }
@@ -1246,6 +1254,78 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                     overridesFiles.add(file);
                 }
             }
+
+            println("\nConverting overrides", true);
+            final List<FileOverride> overrides = pack.getOverrides(null);
+            resetDownloadBars(overrides.size(), 1);
+            fileI = -1;
+            for (final FileOverride override : overrides) {
+                if (Thread.interrupted()) {
+                    throw new InterruptedException();
+                }
+                final int thisI = ++fileI;
+                SwingUtilities.invokeLater(() -> {
+                    overallProgressBar.setValue(thisI);
+                    overallProgressBar.setString("Converting " + override.getPath() + " (" + (thisI + 1) + '/' + fileCount + ')');
+                });
+                final Path destPath = fs.getPath(override.getPath());
+                if (override.isDirectory()) {
+                    Files.createDirectories(destPath);
+                    continue;
+                }
+                Files.createDirectories(destPath.getParent());
+                final MessageDigest sha1md = GeneralUtilKt.getSha1();
+                try (InputStream is = new TrackingInputStream(
+                    new DigestInputStream(override.openInputStream(pack.getZipFile()), sha1md),
+                    read -> SwingUtilities.invokeLater(() -> {
+                        progressBar.setValue(GeneralUtilKt.toIntClamped(read));
+                        progressBar.setString(
+                            "Copying " + override.getPath() + "... " + GeneralUtilKt.getHumanFileSize(read) + " / " + override.getSize()
+                        );
+                    })
+                )) {
+                    Files.copy(is, destPath, StandardCopyOption.REPLACE_EXISTING);
+                }
+                if (!MR_LOOKUP_EXTENSIONS.contains(StringsKt.substringAfterLast(override.getPath(), '.', ""))) {
+                    continue;
+                }
+                final byte[] sha1 = sha1md.digest();
+                final Version versionData;
+                try (Reader reader = new InputStreamReader(SimpleHttp.stream(SimpleHttp.createUrl(
+                    SuperpackKt.MODRINTH_API_ROOT,
+                    "/version_file/" + GeneralUtilKt.toHexString(sha1),
+                    Map.of()
+                )))) {
+                    versionData = LabrinthGson.GSON.fromJson(reader, Version.class);
+                } catch (Exception e) {
+                    continue;
+                }
+                println(override.getPath() + " found on Modrinth, including in pack index.", true);
+                Files.delete(destPath);
+                final Version.File versionFile = versionData.getPrimaryFile();
+                writer.beginObject();
+                writer.name("path").value(override.getPath().substring("overrides/".length()));
+                writer.name("hashes").beginObject();
+                {
+                    writer.name("sha1").value(GeneralUtilKt.toHexString(sha1));
+                    writer.name("sha512").value(GeneralUtilKt.toHexString(versionFile.getHashes().getSha512()));
+                }
+                writer.endObject();
+                writer.name("env").beginObject();
+                {
+                    writer.name("client").value("required");
+                    writer.name("server").value("required");
+                }
+                writer.endObject();
+                writer.name("downloads").beginArray();
+                {
+                    writer.value(versionFile.getUrl().toExternalForm());
+                }
+                writer.endArray();
+                writer.name("fileSize").value(override.getSize());
+                writer.endObject();
+            }
+
             writer.endArray();
 
             writer.name("dependencies").beginObject();
@@ -1264,10 +1344,8 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
             writer.endObject();
         }
 
-        // TODO: convert overrides
-
         println(
-            "\nConvert finished in " +
+            "\nConversion finished in " +
                 GeneralUtilKt.prettyDuration(System.currentTimeMillis() - startTime) + '!',
             true
         );
@@ -1280,10 +1358,10 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
             }
         }
 
-        if (!thirdPartDisabled.isEmpty()) {
+        if (!thirdPartyDisabled.isEmpty()) {
             println("\nThe following files couldn't be included in the mrpack because they had 3rd part downloads disabled by their author.", true);
             println("Installing this CurseForge pack into a temporary folder before converting may help mitigate this.", true);
-            for (final ModpackFile file : thirdPartDisabled) {
+            for (final ModpackFile file : thirdPartyDisabled) {
                 println("  + " + file.getPath(), true);
             }
         }

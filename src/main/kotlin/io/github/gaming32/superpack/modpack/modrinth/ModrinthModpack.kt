@@ -8,7 +8,7 @@ import io.github.gaming32.superpack.modpack.Side
 import io.github.gaming32.superpack.util.toFile
 import java.util.zip.ZipFile
 
-class ModrinthModpack(zipFile: ZipFile) : Modpack {
+class ModrinthModpack(override val zipFile: ZipFile) : Modpack {
     private val mrpack = Mrpack(zipFile)
 
     override val type = ModpackType.MODRINTH
