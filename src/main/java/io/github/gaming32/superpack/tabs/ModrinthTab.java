@@ -663,15 +663,9 @@ public final class ModrinthTab extends JPanel implements HasLogger, Scrollable {
 
                             final StringBuilder info = new StringBuilder("<html><span");
                             switch (version.getVersionType()) {
-                                case RELEASE:
-                                    info.append(" style=\"color: #00aa00;\"");
-                                    break;
-                                case BETA:
-                                    info.append(" style=\"color: #aaaa00;\"");
-                                    break;
-                                case ALPHA:
-                                    info.append(" style=\"color: #aa0000;\"");
-                                    break;
+                                case RELEASE -> info.append(" style=\"color: #00aa00;\"");
+                                case BETA -> info.append(" style=\"color: #aaaa00;\"");
+                                case ALPHA -> info.append(" style=\"color: #aa0000;\"");
                             }
                             info.append(">&#9679; ")
                                 .append(version.getVersionType())
@@ -701,10 +695,7 @@ public final class ModrinthTab extends JPanel implements HasLogger, Scrollable {
 
                             button.add(centerPanel);
                         }
-                        final Version.File file = Arrays.stream(version.getFiles())
-                            .filter(Version.File::isPrimary)
-                            .findFirst()
-                            .orElse(version.getFiles()[0]);
+                        final Version.File file = version.getPrimaryFile();
                         {
                             final JPanel rightPanel = new JPanel();
                             rightPanel.setAlignmentX(JPanel.RIGHT_ALIGNMENT);

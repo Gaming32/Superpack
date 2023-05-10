@@ -21,7 +21,9 @@ class ModrinthModpack(zipFile: ZipFile) : Modpack {
 
     override val path = zipFile.name.toFile()
 
-    override val allFiles = mrpack.allFiles.map(::ModrinthModpackFile)
+    override val versions by lazy { mrpack.packIndex.dependencies.toModpackVersions() }
+
+    override val allFiles by lazy { mrpack.allFiles.map(::ModrinthModpackFile) }
 
     override fun getOverrides(side: Side?) = mrpack.getOverrides(side?.mrpack).map(::FileOverride)
 

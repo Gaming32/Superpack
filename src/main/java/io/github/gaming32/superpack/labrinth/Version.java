@@ -5,6 +5,7 @@ import io.github.gaming32.superpack.util.GeneralUtilKt;
 import lombok.Data;
 
 import java.net.URL;
+import java.util.Arrays;
 import java.util.Date;
 
 @Data
@@ -24,6 +25,13 @@ public class Version implements HasId {
     private Dependency[] dependencies;
     private String[] gameVersions;
     private String[] loaders;
+
+    public File getPrimaryFile() {
+        return Arrays.stream(files)
+            .filter(Version.File::isPrimary)
+            .findFirst()
+            .orElse(files[0]);
+    }
 
     public enum VersionType {
         @SerializedName("release") RELEASE,

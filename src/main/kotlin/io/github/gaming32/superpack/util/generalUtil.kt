@@ -305,14 +305,14 @@ fun <T> browseFileDirectory(parent: T, file: File) where T : Component, T : HasL
     }
 }
 
-fun appendExtension(file: File, filter: FileFilter): File {
-    if (filter !is FileNameExtensionFilter) return file
+fun File.appendExtension(filter: FileFilter): File {
+    if (filter !is FileNameExtensionFilter) return this
     val extensions = filter.extensions
-    if (extensions.isEmpty()) return file
-    return if (file.path.indexOf('.') != -1) file else File(file.path + '.' + extensions[0])
+    if (extensions.isEmpty()) return this
+    return if (path.indexOf('.') != -1) this else File(path + '.' + extensions[0])
 }
 
-val JFileChooser.selectedSaveFile get() = appendExtension(selectedFile, fileFilter)
+val JFileChooser.selectedSaveFile get() = selectedFile.appendExtension(fileFilter)
 
 @Suppress("NOTHING_TO_INLINE")
 inline operator fun File.div(other: String) = File(this, other)
@@ -363,7 +363,7 @@ fun prettyDuration(ms: Long) = buildString {
         append(days)
         append('d')
         msLeft -= days * DAY
-        if (msLeft > 0) {
+        if (msLeft > SECOND) {
             append(' ')
         }
     }
@@ -373,7 +373,7 @@ fun prettyDuration(ms: Long) = buildString {
         append(hours)
         append('h')
         msLeft -= hours * HOUR
-        if (msLeft > 0) {
+        if (msLeft > SECOND) {
             append(' ')
         }
     }
@@ -383,7 +383,7 @@ fun prettyDuration(ms: Long) = buildString {
         append(minutes)
         append('m')
         msLeft -= minutes * MINUTE
-        if (msLeft > 0) {
+        if (msLeft > SECOND) {
             append(' ')
         }
     }
@@ -394,4 +394,12 @@ fun prettyDuration(ms: Long) = buildString {
     }
 
     // Milliseconds aren't shown
+}
+
+fun String.splitOnce(delimiter: Char): Pair<String, String> {
+    val index = indexOf(delimiter)
+    if (index < 0) {
+        throw IllegalArgumentException("Delimiter '$delimiter' not found in string '$this'.")
+    }
+    return Pair(substring(0, index), substring(index + 1))
 }
