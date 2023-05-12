@@ -27,8 +27,6 @@ import javax.imageio.ImageIO
 import javax.swing.*
 import javax.swing.event.DocumentEvent
 import javax.swing.event.DocumentListener
-import javax.swing.filechooser.FileFilter
-import javax.swing.filechooser.FileNameExtensionFilter
 import kotlin.concurrent.thread
 import kotlin.io.path.*
 import kotlin.reflect.KProperty
@@ -180,8 +178,6 @@ fun getSha1(): MessageDigest {
     return digest
 }
 
-fun String.sha1() = toByteArray(Charsets.UTF_8).sha1()
-
 fun ByteArray.sha1(): ByteArray = getSha1().digest(this)
 
 /**
@@ -304,15 +300,6 @@ fun <T> browseFileDirectory(parent: T, file: File) where T : Component, T : HasL
         showErrorMessage(parent, "Failed to browse file", e)
     }
 }
-
-fun File.appendExtension(filter: FileFilter): File {
-    if (filter !is FileNameExtensionFilter) return this
-    val extensions = filter.extensions
-    if (extensions.isEmpty()) return this
-    return if (path.indexOf('.') != -1) this else File(path + '.' + extensions[0])
-}
-
-val JFileChooser.selectedSaveFile get() = selectedFile.appendExtension(fileFilter)
 
 @Suppress("NOTHING_TO_INLINE")
 inline operator fun File.div(other: String) = File(this, other)

@@ -114,7 +114,7 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
         outputDir = new JTextField(10);
         browseOutputDir = new JButton("Browse...");
         browseOutputDir.addActionListener(ev -> {
-            File outputDirFile = FileDialogs.outputDir(this);
+            File outputDirFile = FileDialogs.outputDir(parent);
             if (outputDirFile == null) return;
             outputDir.setText(outputDirFile.getAbsolutePath());
         });
@@ -155,7 +155,7 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
                     installThread.interrupt();
                     return;
                 }
-                final File destFile = FileDialogs.saveModpack(this, ModpackType.MODRINTH);
+                final File destFile = FileDialogs.saveModpack(parent, ModpackType.MODRINTH);
                 if (destFile == null) return;
                 setConfigEnabled(false);
                 installButton.setEnabled(false);

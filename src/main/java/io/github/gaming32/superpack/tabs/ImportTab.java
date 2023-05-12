@@ -35,7 +35,7 @@ public final class ImportTab extends JPanel implements HasLogger {
 
         final JButton browseButton = new JButton("Browse...");
         browseButton.addActionListener(e -> {
-            final File file = FileDialogs.modpack(this);
+            final File file = FileDialogs.modpack(parent);
             if (file != null) {
                 filePathField.setText(file.getAbsolutePath());
             }

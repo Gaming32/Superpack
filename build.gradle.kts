@@ -47,6 +47,8 @@ dependencies {
 
     implementation("io.github.matyrobbrt:curseforgeapi:1.7.4")
 
+    implementation("com.github.steos.jnafilechooser:jnafilechooser-api:f512011434")
+
     compileOnly("org.jetbrains:annotations:24.0.1")
 
     compileOnly("org.projectlombok:lombok:1.18.26")
