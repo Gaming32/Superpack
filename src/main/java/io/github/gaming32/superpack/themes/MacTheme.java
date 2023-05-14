@@ -1,15 +1,15 @@
 package io.github.gaming32.superpack.themes;
 
-import com.formdev.flatlaf.FlatDarkLaf;
-import com.formdev.flatlaf.FlatLightLaf;
+import com.formdev.flatlaf.themes.FlatMacDarkLaf;
+import com.formdev.flatlaf.themes.FlatMacLightLaf;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-final class FlatLafTheme extends Theme {
+final class MacTheme extends Theme {
     @Nullable
     private final Boolean forcedDark;
 
-    FlatLafTheme(@Nullable Boolean forcedDark) {
+    MacTheme(@Nullable Boolean forcedDark) {
         this.forcedDark = forcedDark;
     }
 
@@ -17,11 +17,11 @@ final class FlatLafTheme extends Theme {
     @NotNull
     public String getId() {
         if (forcedDark == null) {
-            return "flatlaf-system";
+            return "mac-system";
         } else if (forcedDark) {
-            return "flatlaf-dark";
+            return "mac-dark";
         } else {
-            return "flatlaf-light";
+            return "mac-light";
         }
     }
 
@@ -29,20 +29,20 @@ final class FlatLafTheme extends Theme {
     @NotNull
     public String getName() {
         if (forcedDark == null) {
-            return "Flat System";
+            return "Mac System";
         } else if (forcedDark) {
-            return "Flat Dark";
+            return "Mac Dark";
         } else {
-            return "Flat Light";
+            return "Mac Light";
         }
     }
 
     @Override
     public void apply(boolean isDark) {
         if (isDark) {
-            FlatDarkLaf.setup();
+            FlatMacDarkLaf.setup();
         } else {
-            FlatLightLaf.setup();
+            FlatMacLightLaf.setup();
         }
     }
 
@@ -53,7 +53,6 @@ final class FlatLafTheme extends Theme {
 
     @Override
     public boolean isDark() {
-        // This should never be called when forcedDark == null
         return Boolean.TRUE.equals(forcedDark);
     }
 }

@@ -178,8 +178,6 @@ fun getSha1(): MessageDigest {
     return digest
 }
 
-fun ByteArray.sha1(): ByteArray = getSha1().digest(this)
-
 /**
  * Computes the SHA-1 hash of the specified input stream, closing it afterward.
  */

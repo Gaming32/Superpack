@@ -29,6 +29,9 @@ public final class Themes {
     public static final Theme INTELLIJ_SYSTEM = register(new IntelliJTheme(null));
     public static final Theme DARCULA = register(new IntelliJTheme(true));
     public static final Theme INTELLIJ_LIGHT = register(new IntelliJTheme(false));
+    public static final Theme MAC_SYSTEM = register(new MacTheme(null));
+    public static final Theme MAC_DARK = register(new MacTheme(true));
+    public static final Theme MAC_LIGHT = register(new MacTheme(false));
     public static final Theme NIMBUS = register(
         new SimpleClassTheme("nimbus", NimbusLookAndFeel.class)
             .name("Nimbus")
