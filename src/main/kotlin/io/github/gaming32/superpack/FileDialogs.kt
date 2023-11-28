@@ -31,9 +31,9 @@ object FileDialogs {
         addFilter(ModpackType.JOINED_FILE_FILTER)
         ModpackType.values().forEach { addFilter(it.fileFilter) }
         if (showOpenDialog(parent)) {
-            null
-        } else {
             selectedFile
+        } else {
+            null
         }
     }
 
@@ -44,18 +44,22 @@ object FileDialogs {
         title = null
         addFilter(type.fileFilter)
         if (showSaveDialog(parent)) {
-            null
+            if (selectedFile.name.contains('.')) {
+                selectedFile
+            } else {
+                File("${selectedFile.path}.${type.fileFilter.extensions.first()}")
+            }
         } else {
-            selectedFile
+            null
         }
     }
 
     @JvmStatic
     fun outputDir(parent: Window?) = OUTPUT_FILE_CHOOSER.run {
         if (showOpenDialog(parent)) {
-            null
-        } else {
             selectedFile
+        } else {
+            null
         }
     }
 

@@ -1364,7 +1364,7 @@ public final class InstallPackTab extends JPanel implements HasLogger, AutoClose
         }
 
         if (!thirdPartyDisabled.isEmpty()) {
-            println("\nThe following files couldn't be included in the mrpack because they had 3rd part downloads disabled by their author.", true);
+            println("\nThe following files couldn't be included in the mrpack because they had 3rd party downloads disabled by their author.", true);
             println("Installing this CurseForge pack into a temporary folder before converting may help mitigate this.", true);
             for (final ModpackFile file : thirdPartyDisabled) {
                 println("  + " + file.getPath(), true);
